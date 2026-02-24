@@ -1,0 +1,68 @@
+<!-- NAVBAR -->
+<nav class="navbar" [class.scrolled]="scrolled()">
+    <div class="nav-inner">
+        <div class="brand">
+            <i class="pi pi-shield"></i>
+            <span class="brand-name">Mi App</span>
+        </div>
+        <div class="nav-actions">
+            <a routerLink="/auth/login">
+                <p-button label="Iniciar sesión" [text]="true" severity="secondary" />
+            </a>
+            <a routerLink="/auth/register">
+                <p-button label="Registrarse" />
+            </a>
+        </div>
+    </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+    <div class="hero-content">
+        <h1>Bienvenido a <span class="highlight">Mi App</span></h1>
+        <p>Una plataforma sencilla, segura y fácil de usar. Crea tu cuenta gratis y empieza hoy.</p>
+        <div class="hero-buttons">
+            <a routerLink="/auth/register">
+                <p-button label="Crear cuenta gratis" icon="pi pi-user-plus" iconPos="right"
+                    styleClass="hero-btn-primary" />
+            </a>
+            <a routerLink="/auth/login">
+                <p-button label="Ya tengo cuenta" [text]="true" severity="secondary" />
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features">
+    <div class="container">
+        <h2>¿Por qué elegirnos?</h2>
+        <div class="features-grid">
+            @for (f of features; track f.title) {
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="pi" [ngClass]="f.icon"></i>
+                </div>
+                <h3>{{ f.title }}</h3>
+                <p>{{ f.description }}</p>
+            </div>
+            }
+        </div>
+    </div>
+</section>
+
+<!-- CTA -->
+<section class="cta">
+    <div class="container">
+        <h2>¿Listo para comenzar?</h2>
+        <p>Regístrate gratis, sin tarjeta de crédito.</p>
+        <a routerLink="/auth/register">
+            <p-button label="Crear mi cuenta" icon="pi pi-arrow-right" iconPos="right" styleClass="hero-btn-primary" />
+        </a>
+    </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+    <p>© 2025 Mi App — Todos los derechos reservados.</p>
+</footer>

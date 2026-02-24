@@ -1,14 +1,22 @@
-import { ApplicationConfig } from '@angular/core';
-import { provideAnimations } from '@angular/platform-browser/animations';
+import { ApplicationConfig, provideZonelessChangeDetection } from '@angular/core';
+import { provideRouter } from '@angular/router';
+import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { providePrimeNG } from 'primeng/config';
-import Lara from '@primeng/themes/lara';
+import Aura from '@primeng/themes/aura';
+import { routes } from './app.routes';
 
 export const appConfig: ApplicationConfig = {
   providers: [
-    provideAnimations(),
+    provideZonelessChangeDetection(),
+    provideRouter(routes),
+    provideAnimationsAsync(),
     providePrimeNG({
       theme: {
-        preset: Lara
+        preset: Aura,
+        options: {
+          darkModeSelector: 'body',
+          cssLayer: false,
+        }
       }
     })
   ]

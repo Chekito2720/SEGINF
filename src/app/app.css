@@ -1,0 +1,112 @@
+/* Global App Styles */
+:root {
+    --primary: #7c6af7;
+    --primary-dark: #5b4ee0;
+    --primary-light: #a99dfa;
+    --accent: #38bdf8;
+    --bg-base: #0d0f1a;
+    --bg-surface: #141627;
+    --bg-card: #1c1f35;
+    --bg-card-hover: #232640;
+    --text-primary: #f0f0ff;
+    --text-secondary: #9a9cc0;
+    --text-muted: #5a5c80;
+    --border: #2a2d4a;
+    --border-light: #3a3d5a;
+    --error: #f87171;
+    --success: #4ade80;
+    --font-display: 'Playfair Display', serif;
+    --font-body: 'DM Sans', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+    --shadow-glow: 0 0 40px rgba(124, 106, 247, 0.15);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html,
+body {
+    height: 100%;
+    font-family: var(--font-body);
+    background: var(--bg-base);
+    color: var(--text-primary);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* PrimeNG overrides */
+.p-inputtext {
+    background: var(--bg-card) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text-primary) !important;
+    border-radius: var(--radius-sm) !important;
+    padding: 0.75rem 1rem !important;
+    transition: border-color 0.2s, box-shadow 0.2s !important;
+    font-family: var(--font-body) !important;
+}
+
+.p-inputtext:focus {
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 3px rgba(124, 106, 247, 0.15) !important;
+    outline: none !important;
+}
+
+.p-inputtext::placeholder {
+    color: var(--text-muted) !important;
+}
+
+.p-button {
+    font-family: var(--font-body) !important;
+    font-weight: 600 !important;
+    border-radius: var(--radius-sm) !important;
+    transition: all 0.2s !important;
+}
+
+.p-button.p-button-primary,
+.p-button:not(.p-button-outlined):not(.p-button-text) {
+    background: var(--primary) !important;
+    border-color: var(--primary) !important;
+    color: white !important;
+}
+
+.p-button.p-button-primary:hover {
+    background: var(--primary-dark) !important;
+    border-color: var(--primary-dark) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(124, 106, 247, 0.35) !important;
+}
+
+.p-message {
+    border-radius: var(--radius-sm) !important;
+}
+
+.p-divider .p-divider-content {
+    background: var(--bg-surface) !important;
+    color: var(--text-muted) !important;
+    font-size: 0.85rem;
+}
+
+.p-divider::before {
+    border-color: var(--border) !important;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-base);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border-light);
+    border-radius: 3px;
+}
