@@ -7,7 +7,12 @@ import { InputTextModule } from 'primeng/inputtext';
 import { PasswordModule } from 'primeng/password';
 import { CheckboxModule } from 'primeng/checkbox';
 import { MessageModule } from 'primeng/message';
-import { DividerModule } from 'primeng/divider';
+
+// Credenciales hardcodeadas
+const VALID_USERS = [
+  { email: 'admin@miapp.com',   password: 'Admin@12345' },
+  { email: 'usuario@miapp.com', password: 'Usuario@12345' },
+];
 
 @Component({
   selector: 'app-login',
@@ -22,24 +27,20 @@ import { DividerModule } from 'primeng/divider';
     PasswordModule,
     CheckboxModule,
     MessageModule,
-    DividerModule,
   ],
   templateUrl: './login.html',
   styleUrl: './login.css'
 })
 export class LoginComponent {
-  loading = signal(false);
+  loading      = signal(false);
   errorMessage = signal('');
-  rememberMe = false;
+  rememberMe   = false;
 
-  form = new FormBuilder().group({
-    email: ['', [Validators.required, Validators.email]],
-    password: ['', [Validators.required, Validators.minLength(6)]],
-  });
+  form: any;
 
   constructor(private fb: FormBuilder, private router: Router) {
     this.form = this.fb.group({
-      email: ['', [Validators.required, Validators.email]],
+      email:    ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required, Validators.minLength(6)]],
     });
   }
@@ -59,12 +60,22 @@ export class LoginComponent {
       this.form.markAllAsTouched();
       return;
     }
+
     this.loading.set(true);
     this.errorMessage.set('');
-    // Simulate API call
-    await new Promise(r => setTimeout(r, 1500));
+
+    // Simular delay de red
+    await new Promise(r => setTimeout(r, 1000));
+
+    const { email, password } = this.form.value;
+    const user = VALID_USERS.find(u => u.email === email && u.password === password);
+
     this.loading.set(false);
-    // this.router.navigate(['/dashboard']);
-    console.log('Login:', this.form.value);
+
+    if (user) {
+      this.router.navigate(['/']);
+    } else {
+      this.errorMessage.set('Correo o contraseña incorrectos.');
+    }
   }
 }

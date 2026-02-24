@@ -179,3 +179,37 @@
 .auth-footer a:hover {
     color: #a99dfa;
 }
+
+/* Required asterisk */
+.required {
+    color: #f87171;
+    margin-left: 2px;
+}
+
+/* Demo credentials box */
+.demo-credentials {
+    margin-top: 1.5rem;
+    background: rgba(124, 106, 247, 0.08);
+    border: 1px dashed rgba(124, 106, 247, 0.3);
+    border-radius: 8px;
+    padding: 0.875rem 1rem;
+}
+
+.demo-title {
+    font-size: 0.8rem;
+    color: #7c6af7;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 0.6rem;
+}
+
+.demo-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: #9a9cc0;
+    font-family: 'JetBrains Mono', monospace;
+    padding: 0.2rem 0;
+}

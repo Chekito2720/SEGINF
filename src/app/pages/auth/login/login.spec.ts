@@ -21,12 +21,25 @@ describe('LoginComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should mark form invalid when empty', () => {
+  it('form should be invalid when empty', () => {
     expect(component.form.invalid).toBe(true);
   });
 
-  it('should be valid with correct input', () => {
-    component.form.setValue({ email: 'test@test.com', password: '123456' });
+  it('should be valid with email and password', () => {
+    component.form.setValue({ email: 'admin@miapp.com', password: 'Admin@12345' });
     expect(component.form.valid).toBe(true);
+  });
+
+  it('should be invalid with bad email format', () => {
+    component.form.setValue({ email: 'no-es-un-email', password: 'Admin@12345' });
+    expect(component.form.get('email')?.invalid).toBe(true);
+  });
+
+  it('errorMessage should start empty', () => {
+    expect(component.errorMessage()).toBe('');
+  });
+
+  it('loading should start false', () => {
+    expect(component.loading()).toBe(false);
   });
 });

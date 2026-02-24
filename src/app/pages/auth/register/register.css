@@ -164,3 +164,38 @@
 .auth-footer a:hover {
     color: #a99dfa;
 }
+
+/* Required asterisk */
+.required {
+    color: #f87171;
+    margin-left: 2px;
+}
+
+/* Password rules checklist */
+.password-rules {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    margin-top: 0.5rem;
+    padding: 0.75rem;
+    background: #1a1d30;
+    border-radius: 8px;
+    border: 1px solid #2a2d4a;
+}
+
+.password-rules span {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    color: #5a5c80;
+    transition: color 0.2s;
+}
+
+.password-rules span .pi {
+    font-size: 0.75rem;
+}
+
+.password-rules span.rule-ok {
+    color: #4ade80;
+}
