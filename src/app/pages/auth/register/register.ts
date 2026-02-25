@@ -99,6 +99,19 @@ export class RegisterComponent {
     }, { validators: passwordMatchValidator });
   }
 
+  // Bloquea cualquier tecla que no sea número
+  onlyNumbers(event: KeyboardEvent): boolean {
+    return /[0-9]/.test(event.key);
+  }
+
+  // Bloquea pegar texto con letras
+  blockPasteLetters(event: ClipboardEvent): void {
+    const pasted = event.clipboardData?.getData('text') || '';
+    if (!/^\d+$/.test(pasted)) {
+      event.preventDefault();
+    }
+  }
+
   isInvalid(field: string) {
     const ctrl = this.form.get(field);
     return ctrl?.invalid && ctrl?.touched;

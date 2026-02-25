@@ -8,9 +8,9 @@ describe('RegisterComponent', () => {
   let fixture: ComponentFixture<RegisterComponent>;
 
   const validForm = {
-    fullName: 'Ana García',
-    username: 'ana_garcia',
-    email: 'ana@email.com',
+    fullName: 'Sergio Bravo',
+    username: 'sergio_bravo',
+    email: 'sergio@email.com',
     phone: '50312345678',
     birthDate: '1995-06-15',
     address: 'Calle Ejemplo 123',

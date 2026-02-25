@@ -23,7 +23,7 @@
             <!-- Nombre completo -->
             <div class="field">
                 <label for="fullName">Nombre completo <span class="required">*</span></label>
-                <input pInputText id="fullName" type="text" formControlName="fullName" placeholder="Ana García"
+                <input pInputText id="fullName" type="text" formControlName="fullName" placeholder="Sergio Bravo"
                     [class.input-error]="isInvalid('fullName')" />
                 @if (isInvalid('fullName')) {
                 <span class="field-error">
@@ -36,7 +36,7 @@
             <!-- Usuario -->
             <div class="field">
                 <label for="username">Usuario <span class="required">*</span></label>
-                <input pInputText id="username" type="text" formControlName="username" placeholder="ana_garcia"
+                <input pInputText id="username" type="text" formControlName="username" placeholder="sergio_bravo"
                     [class.input-error]="isInvalid('username')" />
                 @if (isInvalid('username')) {
                 <span class="field-error">
@@ -49,7 +49,7 @@
             <!-- Email -->
             <div class="field">
                 <label for="email">Correo electrónico <span class="required">*</span></label>
-                <input pInputText id="email" type="email" formControlName="email" placeholder="ana@email.com"
+                <input pInputText id="email" type="email" formControlName="email" placeholder="sergio@email.com"
                     [class.input-error]="isInvalid('email')" />
                 @if (isInvalid('email')) {
                 <span class="field-error">
@@ -64,7 +64,8 @@
             <div class="field">
                 <label for="phone">Teléfono <span class="required">*</span></label>
                 <input pInputText id="phone" type="tel" formControlName="phone" placeholder="50312345678"
-                    [class.input-error]="isInvalid('phone')" />
+                    [class.input-error]="isInvalid('phone')" (keypress)="onlyNumbers($event)"
+                    (paste)="blockPasteLetters($event)" />
                 @if (isInvalid('phone')) {
                 <span class="field-error">
                     <i class="pi pi-exclamation-circle"></i>
