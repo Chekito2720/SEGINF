@@ -1,0 +1,38 @@
+<aside class="sidebar" [class.collapsed]="collapsed()">
+
+    <!-- Header -->
+    <div class="sidebar-header">
+        @if (!collapsed()) {
+        <div class="brand">
+            <i class="pi pi-shield"></i>
+            <span class="brand-name">Mi App</span>
+        </div>
+        }
+        <button class="toggle-btn" (click)="toggle()" [title]="collapsed() ? 'Expandir' : 'Colapsar'">
+            <i class="pi" [ngClass]="collapsed() ? 'pi-chevron-right' : 'pi-chevron-left'"></i>
+        </button>
+    </div>
+
+    <!-- Nav -->
+    <nav class="sidebar-nav">
+        @for (item of navItems; track item.route) {
+        <a [routerLink]="item.route" routerLinkActive="active" class="nav-item" [title]="collapsed() ? item.label : ''">
+            <i class="pi" [ngClass]="item.icon"></i>
+            @if (!collapsed()) {
+            <span>{{ item.label }}</span>
+            }
+        </a>
+        }
+    </nav>
+
+    <!-- Footer -->
+    <div class="sidebar-footer">
+        <a routerLink="/auth/login" class="nav-item logout">
+            <i class="pi pi-sign-out"></i>
+            @if (!collapsed()) {
+            <span>Cerrar sesión</span>
+            }
+        </a>
+    </div>
+
+</aside>

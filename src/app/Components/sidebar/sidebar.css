@@ -1,0 +1,135 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600&display=swap');
+
+.sidebar {
+    width: 240px;
+    min-height: 100vh;
+    background: #141627;
+    border-right: 1px solid #2a2d4a;
+    display: flex;
+    flex-direction: column;
+    transition: width 0.25s ease;
+    font-family: 'DM Sans', sans-serif;
+    flex-shrink: 0;
+}
+
+.sidebar.collapsed {
+    width: 64px;
+}
+
+/* Header */
+.sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem 1rem;
+    border-bottom: 1px solid #2a2d4a;
+    min-height: 64px;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    overflow: hidden;
+}
+
+.brand .pi {
+    color: #7c6af7;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.brand-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem;
+    color: #f0f0ff;
+    white-space: nowrap;
+}
+
+.toggle-btn {
+    background: none;
+    border: 1px solid #2a2d4a;
+    border-radius: 8px;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #9a9cc0;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.toggle-btn:hover {
+    background: #1c1f35;
+    color: #f0f0ff;
+    border-color: #3a3d5a;
+}
+
+/* Nav */
+.sidebar-nav {
+    flex: 1;
+    padding: 1rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.7rem 0.875rem;
+    border-radius: 10px;
+    color: #9a9cc0;
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.2s;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.nav-item .pi {
+    font-size: 1rem;
+    flex-shrink: 0;
+    width: 20px;
+    text-align: center;
+}
+
+.nav-item:hover {
+    background: #1c1f35;
+    color: #f0f0ff;
+}
+
+.nav-item.active {
+    background: rgba(124, 106, 247, 0.15);
+    color: #7c6af7;
+    font-weight: 600;
+}
+
+.nav-item.active .pi {
+    color: #7c6af7;
+}
+
+/* Footer */
+.sidebar-footer {
+    padding: 0.75rem;
+    border-top: 1px solid #2a2d4a;
+}
+
+.nav-item.logout:hover {
+    background: rgba(248, 113, 113, 0.1);
+    color: #f87171;
+}
+
+/* Collapsed: center icons */
+.collapsed .sidebar-header {
+    justify-content: center;
+}
+
+.collapsed .nav-item {
+    justify-content: center;
+    padding: 0.7rem;
+}

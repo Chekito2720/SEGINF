@@ -73,7 +73,7 @@ export class LoginComponent {
     this.loading.set(false);
 
     if (user) {
-      this.router.navigate(['/']);
+      this.router.navigate(['/home']);
     } else {
       this.errorMessage.set('Correo o contraseña incorrectos.');
     }

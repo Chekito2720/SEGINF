@@ -1,0 +1,11 @@
+.layout-wrapper {
+    display: flex;
+    min-height: 100vh;
+    background: #0d0f1a;
+}
+
+.layout-content {
+    flex: 1;
+    overflow-y: auto;
+    background: #0d0f1a;
+}
