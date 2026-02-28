@@ -1,0 +1,29 @@
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { GroupsComponent } from './groups';
+
+describe('GroupsComponent', () => {
+  let component: GroupsComponent;
+  let fixture: ComponentFixture<GroupsComponent>;
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [GroupsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(GroupsComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+  });
+
+  it('should create', () => {
+    expect(component).toBeTruthy();
+  });
+
+  it('total should be a number', () => {
+    expect(typeof component.total).toBe('number');
+  });
+
+  it('total should be greater than 0', () => {
+    expect(component.total).toBeGreaterThan(0);
+  });
+});

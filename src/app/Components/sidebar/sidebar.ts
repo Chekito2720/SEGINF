@@ -20,11 +20,11 @@ export class SidebarComponent {
   collapsed = signal(false);
 
   navItems: NavItem[] = [
-    { label: 'Inicio',       icon: 'pi-home',        route: '/home' },
-    { label: 'Perfil',       icon: 'pi-user',        route: '/home/profile' },
-    { label: 'Configuración',icon: 'pi-cog',         route: '/home/settings' },
-    { label: 'Reportes',     icon: 'pi-chart-bar',   route: '/home/reports' },
-    { label: 'Mensajes',     icon: 'pi-envelope',    route: '/home/messages' },
+    { label: 'Inicio',    icon: 'pi-home',       route: '/home'        },
+    { label: 'Perfil',    icon: 'pi-user',        route: '/home/user'   },
+    { label: 'Grupos',    icon: 'pi-users',       route: '/home/groups' },
+    { label: 'Reportes',  icon: 'pi-chart-bar',   route: '/home/reports'},
+    { label: 'Mensajes',  icon: 'pi-envelope',    route: '/home/messages'},
   ];
 
   toggle() {

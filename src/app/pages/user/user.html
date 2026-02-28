@@ -1,0 +1,41 @@
+<div class="page-wrapper">
+
+    <header class="page-header">
+        <div>
+            <h1>Mi Perfil</h1>
+            <p>Información de tu cuenta</p>
+        </div>
+    </header>
+
+    <!-- Avatar + nombre -->
+    <div class="profile-hero">
+        <div class="avatar">
+            <span>{{ user.fullName.charAt(0) }}</span>
+        </div>
+        <div>
+            <h2>{{ user.fullName }}</h2>
+            <span class="username-tag">&#64;{{ user.username }}</span>
+        </div>
+    </div>
+
+    <!-- Datos del usuario -->
+    <div class="user-card">
+        <div class="card-header">
+            <i class="pi pi-id-card"></i>
+            <span>Datos personales</span>
+        </div>
+
+        <div class="fields-grid">
+            @for (field of fields; track field.key) {
+            <div class="field-item">
+                <div class="field-label">
+                    <i class="pi" [ngClass]="field.icon"></i>
+                    <span>{{ field.label }}</span>
+                </div>
+                <div class="field-value">{{ user[field.key] }}</div>
+            </div>
+            }
+        </div>
+    </div>
+
+</div>

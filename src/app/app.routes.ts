@@ -17,7 +17,6 @@ export const routes: Routes = [
       import('./pages/auth/register/register').then(m => m.RegisterComponent)
   },
   {
- 
     path: 'home',
     loadComponent: () =>
       import('./Layout/main-layout/main-layout').then(m => m.MainLayoutComponent),
@@ -26,6 +25,16 @@ export const routes: Routes = [
         path: '',
         loadComponent: () =>
           import('./pages/home/home').then(m => m.HomeComponent)
+      },
+      {
+        path: 'user',
+        loadComponent: () =>
+          import('./pages/user/user').then(m => m.UserComponent)
+      },
+      {
+        path: 'groups',
+        loadComponent: () =>
+          import('./pages/groups/groups').then(m => m.GroupsComponent)
       },
     ]
   },

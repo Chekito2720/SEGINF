@@ -82,8 +82,7 @@
                 @if (isInvalid('birthDate')) {
                 <span class="field-error">
                     <i class="pi pi-exclamation-circle"></i>
-                    {{ form.get('birthDate')?.errors?.['required'] ? 'La fecha es requerida' : 'Debes ser mayor de 18
-                    años' }}
+                    {{ form.get('birthDate')?.errors?.['required'] ? 'La fecha es requerida' : 'Debes ser mayor de 18 años' }}
                 </span>
                 }
             </div>
