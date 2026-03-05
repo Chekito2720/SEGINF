@@ -1,1 +1,26 @@
-/* You can add global styles to this file, and also import other style files */
+/* =====================================================
+   GLOBAL STYLES — fuente única para todo el proyecto
+   ===================================================== */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600&display=swap');
+@import "primeicons/primeicons.css";
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+  background: #0d0f1a;
+  color: #f0f0ff;
+  font-family: 'DM Sans', sans-serif;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: 'Playfair Display', serif;
+}

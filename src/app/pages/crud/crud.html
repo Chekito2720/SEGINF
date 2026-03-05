@@ -1,0 +1,119 @@
+<p-toast />
+<p-confirmDialog />
+
+<div class="page-wrapper">
+
+    <!-- Header -->
+    <header class="page-header">
+        <div>
+            <h1>Grupos</h1>
+            <p>Gestión completa de grupos del sistema</p>
+        </div>
+        <p-button label="Nuevo grupo" icon="pi pi-plus" (onClick)="openCreate()" />
+    </header>
+
+    <!-- Tabla PrimeNG -->
+    <p-table [value]="groups()" [paginator]="true" [rows]="5" [rowHover]="true" styleClass="p-datatable-sm custom-table"
+        [tableStyle]="{ 'min-width': '60rem' }">
+        <ng-template pTemplate="header">
+            <tr>
+                <th>Nombre</th>
+                <th>Nivel</th>
+                <th>Autor</th>
+                <th>Integrantes</th>
+                <th>Tickets</th>
+                <th>Descripción</th>
+                <th style="width:120px">Acciones</th>
+            </tr>
+        </ng-template>
+
+        <ng-template pTemplate="body" let-group>
+            <tr>
+                <td><strong>{{ group.nombre }}</strong></td>
+                <td>
+                    <p-tag [value]="group.nivel" [severity]="nivelSeverity(group.nivel)" />
+                </td>
+                <td>{{ group.autor }}</td>
+                <td>
+                    <span class="chip"><i class="pi pi-users"></i> {{ group.integrantes }}</span>
+                </td>
+                <td>
+                    <span class="chip"><i class="pi pi-ticket"></i> {{ group.tickets }}</span>
+                </td>
+                <td class="desc-cell">{{ group.descripcion }}</td>
+                <td>
+                    <div class="action-row">
+                        <p-button icon="pi pi-pencil" [rounded]="true" [text]="true" severity="info"
+                            (onClick)="openEdit(group)" pTooltip="Editar" />
+                        <p-button icon="pi pi-trash" [rounded]="true" [text]="true" severity="danger"
+                            (onClick)="confirmDelete(group.id)" pTooltip="Eliminar" />
+                    </div>
+                </td>
+            </tr>
+        </ng-template>
+
+        <ng-template pTemplate="emptymessage">
+            <tr>
+                <td colspan="7" class="empty-cell">
+                    <i class="pi pi-inbox"></i>
+                    <span>No hay grupos registrados</span>
+                </td>
+            </tr>
+        </ng-template>
+    </p-table>
+
+</div>
+
+<!-- Modal crear / editar -->
+<p-dialog [(visible)]="showModal" [modal]="true" [closable]="true" [draggable]="false" [style]="{ width: '520px' }"
+    styleClass="custom-dialog">
+    <ng-template pTemplate="header">
+        <div class="modal-title">
+            <i class="pi" [ngClass]="isEditing() ? 'pi-pencil' : 'pi-plus-circle'"></i>
+            <span>{{ isEditing() ? 'Editar grupo' : 'Nuevo grupo' }}</span>
+        </div>
+    </ng-template>
+
+    <div class="modal-body">
+
+        <div class="modal-field">
+            <label>Nombre <span class="req">*</span></label>
+            <input pInputText [(ngModel)]="form.nombre" placeholder="Nombre del grupo" class="w-full" />
+        </div>
+
+        <div class="modal-field">
+            <label>Nivel <span class="req">*</span></label>
+            <p-select [(ngModel)]="form.nivel" [options]="niveles" optionLabel="label" optionValue="value"
+                placeholder="Selecciona un nivel" styleClass="w-full" />
+        </div>
+
+        <div class="modal-field">
+            <label>Autor <span class="req">*</span></label>
+            <input pInputText [(ngModel)]="form.autor" placeholder="Nombre del autor" class="w-full" />
+        </div>
+
+        <div class="modal-row">
+            <div class="modal-field">
+                <label>Integrantes</label>
+                <p-inputNumber [(ngModel)]="form.integrantes" [min]="0" styleClass="w-full" />
+            </div>
+            <div class="modal-field">
+                <label>Tickets</label>
+                <p-inputNumber [(ngModel)]="form.tickets" [min]="0" styleClass="w-full" />
+            </div>
+        </div>
+
+        <div class="modal-field">
+            <label>Descripción</label>
+            <textarea pTextarea [(ngModel)]="form.descripcion" placeholder="Describe el grupo..." rows="3"
+                class="w-full"></textarea>
+        </div>
+
+    </div>
+
+    <ng-template pTemplate="footer">
+        <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="showModal.set(false)" />
+        <p-button [label]="isEditing() ? 'Guardar cambios' : 'Crear grupo'"
+            [icon]="isEditing() ? 'pi pi-check' : 'pi pi-plus'" [disabled]="formInvalid" (onClick)="saveGroup()" />
+    </ng-template>
+</p-dialog>

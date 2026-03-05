@@ -21,21 +21,11 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./Layout/main-layout/main-layout').then(m => m.MainLayoutComponent),
     children: [
-      {
-        path: '',
-        loadComponent: () =>
-          import('./pages/home/home').then(m => m.HomeComponent)
-      },
-      {
-        path: 'user',
-        loadComponent: () =>
-          import('./pages/user/user').then(m => m.UserComponent)
-      },
-      {
-        path: 'groups',
-        loadComponent: () =>
-          import('./pages/groups/groups').then(m => m.GroupsComponent)
-      },
+      { path: '',        loadComponent: () => import('./pages/home/home').then(m => m.HomeComponent)   },
+      { path: 'user',    loadComponent: () => import('./pages/user/user').then(m => m.UserComponent)   },
+      { path: 'groups',  loadComponent: () => import('./pages/groups/groups').then(m => m.GroupsComponent) },
+      { path: 'crud',    loadComponent: () => import('./pages/crud/crud').then(m => m.CrudComponent)   },
+      { path: 'rud',     loadComponent: () => import('./pages/rud/rud').then(m => m.RudComponent)      },
     ]
   },
   { path: '**', redirectTo: '' }

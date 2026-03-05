@@ -8,15 +8,18 @@
             <span class="brand-name">Mi App</span>
         </div>
         }
-        <button class="toggle-btn" (click)="toggle()" [title]="collapsed() ? 'Expandir' : 'Colapsar'">
-            <i class="pi" [ngClass]="collapsed() ? 'pi-chevron-right' : 'pi-chevron-left'"></i>
-        </button>
+        <p-button [icon]="collapsed() ? 'pi pi-chevron-right' : 'pi pi-chevron-left'" [rounded]="true" [text]="true"
+            severity="secondary" (onClick)="toggle()" [pTooltip]="collapsed() ? 'Expandir' : 'Colapsar'"
+            tooltipPosition="right" />
     </div>
+
+    <p-divider styleClass="sidebar-divider" />
 
     <!-- Nav -->
     <nav class="sidebar-nav">
         @for (item of navItems; track item.route) {
-        <a [routerLink]="item.route" routerLinkActive="active" class="nav-item" [title]="collapsed() ? item.label : ''">
+        <a [routerLink]="item.route" routerLinkActive="active" class="nav-item"
+            [pTooltip]="collapsed() ? item.label : ''" tooltipPosition="right">
             <i class="pi" [ngClass]="item.icon"></i>
             @if (!collapsed()) {
             <span>{{ item.label }}</span>
@@ -25,9 +28,14 @@
         }
     </nav>
 
+    <div class="sidebar-spacer"></div>
+
+    <p-divider styleClass="sidebar-divider" />
+
     <!-- Footer -->
     <div class="sidebar-footer">
-        <a routerLink="/auth/login" class="nav-item logout">
+        <a routerLink="/auth/login" class="nav-item logout" [pTooltip]="collapsed() ? 'Cerrar sesión' : ''"
+            tooltipPosition="right">
             <i class="pi pi-sign-out"></i>
             @if (!collapsed()) {
             <span>Cerrar sesión</span>
