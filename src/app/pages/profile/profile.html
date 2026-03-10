@@ -1,0 +1,235 @@
+<p-toast position="top-right" />
+
+@if (profileUser(); as u) {
+<div class="pf-wrap">
+
+    <!-- ══ TOPBAR ═══════════════════════════════════════════════════════ -->
+    <header class="pf-topbar">
+        @if (!isSelf()) {
+        <button class="back-btn" (click)="goBack()">
+            <i class="pi pi-arrow-left"></i> Volver
+        </button>
+        }
+        <span class="pf-breadcrumb">
+            @if (isSelf()) { Mi perfil } @else { Usuarios / <strong>{{ u.fullName }}</strong> }
+        </span>
+        @if (canEdit && !editing()) {
+        <button class="pf-edit-btn" (click)="startEdit()">
+            <i class="pi pi-pencil"></i> Editar perfil
+        </button>
+        }
+    </header>
+
+    <!-- ══ MAIN GRID ════════════════════════════════════════════════════ -->
+    <div class="pf-grid">
+
+        <!-- ── LEFT: card de perfil ─────────────────────────────────────── -->
+        <aside class="pf-card">
+
+            <!-- Avatar + nombre -->
+            <div class="pf-avatar-wrap">
+                <div class="pf-avatar" [style.background]="userColor(u.id)">
+                    {{ userInitial(u) }}
+                </div>
+                <div class="pf-avatar-glow" [style.background]="userColor(u.id)"></div>
+            </div>
+
+            <div class="pf-identity">
+                <h2 class="pf-name">{{ u.fullName }}</h2>
+                <span class="pf-username">&#64;{{ u.username }}</span>
+                <span class="pf-badge" [style.background]="profileBadgeColor(u) + '20'"
+                    [style.color]="profileBadgeColor(u)">
+                    {{ profileLabel(u) }}
+                </span>
+            </div>
+
+            <p-divider styleClass="pf-divider" />
+
+            <!-- Grupos -->
+            <div class="pf-section">
+                <span class="pf-section-label"><i class="pi pi-users"></i> Grupos</span>
+                <div class="pf-groups">
+                    @for (gid of u.groupIds; track gid) {
+                    <span class="group-pill" [style.background]="groupColor(gid) + 'cc'">
+                        {{ groupName(gid) }}
+                    </span>
+                    }
+                </div>
+            </div>
+
+            <p-divider styleClass="pf-divider" />
+
+            <!-- Permisos -->
+            <div class="pf-section">
+                <span class="pf-section-label"><i class="pi pi-shield"></i> Permisos</span>
+                <span class="pf-perm-count">{{ u.permissions.length }} permisos activos</span>
+                <div class="pf-perms-wrap">
+                    @for (p of u.permissions.slice(0, 8); track p) {
+                    <span class="perm-chip">{{ p }}</span>
+                    }
+                    @if (u.permissions.length > 8) {
+                    <span class="perm-chip more">+{{ u.permissions.length - 8 }} más</span>
+                    }
+                </div>
+            </div>
+
+        </aside>
+
+        <!-- ── RIGHT: datos + tickets ───────────────────────────────────── -->
+        <div class="pf-main">
+
+            <!-- ── DATOS ─────────────────────────────────────────────────── -->
+            <section class="pf-data-section">
+                <div class="pf-section-head">
+                    <i class="pi pi-id-card"></i>
+                    <span>Información personal</span>
+                </div>
+
+                @if (!editing()) {
+                <!-- Vista lectura -->
+                <div class="pf-fields-grid">
+                    <div class="pf-field">
+                        <span class="pf-field-label"><i class="pi pi-user"></i> Nombre</span>
+                        <span class="pf-field-value">{{ u.fullName }}</span>
+                    </div>
+                    <div class="pf-field">
+                        <span class="pf-field-label"><i class="pi pi-at"></i> Usuario</span>
+                        <span class="pf-field-value">{{ u.username }}</span>
+                    </div>
+                    <div class="pf-field">
+                        <span class="pf-field-label"><i class="pi pi-envelope"></i> Correo</span>
+                        <span class="pf-field-value">{{ u.email }}</span>
+                    </div>
+                    <div class="pf-field">
+                        <span class="pf-field-label"><i class="pi pi-phone"></i> Teléfono</span>
+                        <span class="pf-field-value">{{ u.phone || '—' }}</span>
+                    </div>
+                    <div class="pf-field">
+                        <span class="pf-field-label"><i class="pi pi-calendar"></i> Fecha de nac.</span>
+                        <span class="pf-field-value">{{ formatDate(u.birthDate) }}</span>
+                    </div>
+                    <div class="pf-field pf-field--full">
+                        <span class="pf-field-label"><i class="pi pi-map-marker"></i> Dirección</span>
+                        <span class="pf-field-value">{{ u.address || '—' }}</span>
+                    </div>
+                </div>
+
+                } @else {
+                <!-- Formulario de edición -->
+                <div class="pf-edit-form">
+                    <div class="pf-fields-grid">
+                        <div class="pf-field">
+                            <label class="pf-field-label">Nombre completo *</label>
+                            <input pInputText [(ngModel)]="draftForm.fullName" class="pf-input"
+                                placeholder="Nombre completo" />
+                        </div>
+                        <div class="pf-field">
+                            <label class="pf-field-label">Usuario</label>
+                            <input pInputText [(ngModel)]="draftForm.username" class="pf-input"
+                                placeholder="@usuario" />
+                        </div>
+                        <div class="pf-field">
+                            <label class="pf-field-label">Correo</label>
+                            <input pInputText [(ngModel)]="draftForm.email" type="email" class="pf-input"
+                                placeholder="correo@ejemplo.com" />
+                        </div>
+                        <div class="pf-field">
+                            <label class="pf-field-label">Teléfono</label>
+                            <input pInputText [(ngModel)]="draftForm.phone" type="tel" class="pf-input"
+                                placeholder="+503..." />
+                        </div>
+                        <div class="pf-field">
+                            <label class="pf-field-label">Fecha de nacimiento</label>
+                            <input pInputText [(ngModel)]="draftForm.birthDate" type="date" class="pf-input" />
+                        </div>
+                        <div class="pf-field pf-field--full">
+                            <label class="pf-field-label">Dirección</label>
+                            <input pInputText [(ngModel)]="draftForm.address" class="pf-input"
+                                placeholder="Calle, ciudad..." />
+                        </div>
+                    </div>
+                    <div class="pf-edit-actions">
+                        <button class="pf-btn accent" (click)="saveEdit()" [disabled]="!draftForm.fullName.trim()">
+                            <i class="pi pi-check"></i> Guardar cambios
+                        </button>
+                        <button class="pf-btn" (click)="cancelEdit()">Cancelar</button>
+                    </div>
+                </div>
+                }
+            </section>
+
+            <p-divider styleClass="pf-divider" />
+
+            <!-- ── TICKETS ───────────────────────────────────────────────── -->
+            <section class="pf-tickets-section">
+                <div class="pf-section-head">
+                    <i class="pi pi-ticket"></i>
+                    <span>Carga de trabajo</span>
+                </div>
+
+                <!-- Stat strip -->
+                <div class="pf-stat-strip">
+                    @for (tab of statusTabs; track tab.value) {
+                    <button class="stat-pill" [class.active]="ticketFilter() === tab.value" [style.--c]="tab.color"
+                        (click)="ticketFilter.set(tab.value)">
+                        <i class="pi" [ngClass]="tab.icon"></i>
+                        <span class="stat-label">{{ tab.label }}</span>
+                        <span class="stat-num">{{ counts()[tab.value] }}</span>
+                    </button>
+                    }
+                </div>
+
+                <!-- Tabla de tickets -->
+                <div class="pf-ticket-list">
+                    @if (filteredTickets().length === 0) {
+                    <div class="pf-tickets-empty">
+                        <i class="pi pi-inbox"></i>
+                        <span>Sin tickets en esta categoría</span>
+                    </div>
+                    }
+
+                    @for (t of filteredTickets(); track t.id) {
+                    <div class="pf-ticket-row" (click)="openTicket(t.id)">
+
+                        <span class="pt-id">#{{ t.id }}</span>
+
+                        <div class="pt-info">
+                            <span class="pt-title" [class.overdue]="isOverdue(t.dueDate, t.status)">
+                                {{ t.titulo }}
+                            </span>
+                            @if (t.dueDate) {
+                            <span class="pt-due" [class.overdue-text]="isOverdue(t.dueDate, t.status)">
+                                <i class="pi pi-calendar"></i>
+                                {{ formatDate(t.dueDate) }}
+                                @if (isOverdue(t.dueDate, t.status)) { <span class="overdue-badge">Vencido</span> }
+                            </span>
+                            }
+                        </div>
+
+                        <span class="pt-status chip" [style.color]="statusMeta(t.status).color"
+                            [style.background]="statusMeta(t.status).bg">
+                            <i class="pi" [ngClass]="statusMeta(t.status).icon"></i>
+                            {{ statusMeta(t.status).label }}
+                        </span>
+
+                        <span class="pt-priority" [style.color]="priorityMeta(t.priority).color">
+                            {{ priorityMeta(t.priority).label }}
+                        </span>
+
+                        <i class="pi pi-arrow-right pt-arrow"></i>
+                    </div>
+                    }
+                </div>
+            </section>
+
+        </div>
+    </div>
+</div>
+
+} @else {
+<div class="pf-not-found">
+    <i class="pi pi-user-minus"></i>
+    <h2>Usuario no encontrado</h2>
+    <button class="pf-btn accent" (click)="goBack()">Volver</button>
+</div>
+}

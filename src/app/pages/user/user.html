@@ -1,41 +1,54 @@
-<div class="page-wrapper">
+<div class="usr-wrap">
 
-    <header class="page-header">
-        <div>
-            <h1>Mi Perfil</h1>
-            <p>Información de tu cuenta</p>
-        </div>
+    <header class="usr-header">
+        <h1 class="usr-title">Usuarios</h1>
+        <span class="usr-group">{{ group?.nombre }}</span>
+        <span class="usr-count">{{ members.length }} miembros</span>
     </header>
 
-    <!-- Avatar + nombre -->
-    <div class="profile-hero">
-        <div class="avatar">
-            <span>{{ user.fullName.charAt(0) }}</span>
-        </div>
-        <div>
-            <h2>{{ user.fullName }}</h2>
-            <span class="username-tag">&#64;{{ user.username }}</span>
-        </div>
-    </div>
+    <div class="usr-grid">
+        @for (u of members; track u.id) {
+        <div class="usr-card" (click)="openProfile(u.id)">
 
-    <!-- Datos del usuario -->
-    <div class="user-card">
-        <div class="card-header">
-            <i class="pi pi-id-card"></i>
-            <span>Datos personales</span>
-        </div>
-
-        <div class="fields-grid">
-            @for (field of fields; track field.key) {
-            <div class="field-item">
-                <div class="field-label">
-                    <i class="pi" [ngClass]="field.icon"></i>
-                    <span>{{ field.label }}</span>
+            <div class="usr-card-top">
+                <div class="usr-avatar" [style.background]="userColor(u.id)">
+                    {{ u.fullName.charAt(0).toUpperCase() }}
                 </div>
-                <div class="field-value">{{ user[field.key] }}</div>
+                <div class="usr-info">
+                    <span class="usr-name">{{ u.fullName }}</span>
+                    <span class="usr-username">&#64;{{ u.username }}</span>
+                </div>
+                <span class="usr-badge" [style.background]="profileColor(u) + '20'" [style.color]="profileColor(u)">
+                    {{ profileLabel(u) }}
+                </span>
             </div>
-            }
+
+            <div class="usr-stats">
+                <div class="usr-stat">
+                    <span class="ust-num">{{ ticketCounts(u.id).total }}</span>
+                    <span class="ust-lbl">Total</span>
+                </div>
+                <div class="usr-stat">
+                    <span class="ust-num" style="color:#f59e0b">{{ ticketCounts(u.id).pendiente }}</span>
+                    <span class="ust-lbl">Pendiente</span>
+                </div>
+                <div class="usr-stat">
+                    <span class="ust-num" style="color:#38bdf8">{{ ticketCounts(u.id).en_progreso }}</span>
+                    <span class="ust-lbl">En progreso</span>
+                </div>
+                <div class="usr-stat">
+                    <span class="ust-num" style="color:#4ade80">{{ ticketCounts(u.id).hecho }}</span>
+                    <span class="ust-lbl">Hecho</span>
+                </div>
+            </div>
+
+            <div class="usr-card-footer">
+                <span class="usr-perms">{{ u.permissions.length }} permisos</span>
+                <span class="usr-view">Ver perfil <i class="pi pi-arrow-right"></i></span>
+            </div>
+
         </div>
+        }
     </div>
 
 </div>

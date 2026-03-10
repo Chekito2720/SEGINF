@@ -1,0 +1,50 @@
+<header class="topbar">
+
+    <!-- Breadcrumb / page hint -->
+    <div class="tb-left">
+        <span class="tb-group-pill">
+            <span class="tb-group-dot" [style.background]="group?.color ?? '#7c6af7'"></span>
+            {{ group?.nombre ?? '—' }}
+        </span>
+    </div>
+
+    <!-- Right: avatar + dropdown -->
+    <div class="tb-right">
+        <div class="tb-avatar-wrap" (click)="toggleMenu()">
+            <div class="tb-avatar" [style.background]="userColor(user?.id ?? 0)">
+                {{ user?.fullName?.charAt(0)?.toUpperCase() }}
+            </div>
+            <div class="tb-user-info">
+                <span class="tb-user-name">{{ user?.fullName }}</span>
+                <span class="tb-user-role">{{ user?.permissions?.length }} permisos</span>
+            </div>
+            <i class="pi pi-chevron-down tb-chevron" [class.open]="menuOpen()"></i>
+
+            <!-- Dropdown -->
+            @if (menuOpen()) {
+            <div class="tb-dropdown">
+                <div class="tb-dropdown-header">
+                    <div class="tb-dd-avatar" [style.background]="userColor(user?.id ?? 0)">
+                        {{ user?.fullName?.charAt(0)?.toUpperCase() }}
+                    </div>
+                    <div>
+                        <div class="tb-dd-name">{{ user?.fullName }}</div>
+                        <div class="tb-dd-email">{{ user?.email }}</div>
+                    </div>
+                </div>
+                <div class="tb-dropdown-divider"></div>
+                <button class="tb-dd-item" (click)="goToProfile()">
+                    <i class="pi pi-user"></i>
+                    Mi perfil
+                </button>
+                <div class="tb-dropdown-divider"></div>
+                <button class="tb-dd-item danger" (click)="logout()">
+                    <i class="pi pi-sign-out"></i>
+                    Cerrar sesión
+                </button>
+            </div>
+            }
+        </div>
+    </div>
+
+</header>
