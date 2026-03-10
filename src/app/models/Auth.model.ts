@@ -100,23 +100,24 @@ export interface Ticket {
   assignedToId: number;     // userId asignado
   createdById:  number;     // userId creador
   createdAt:    string;
+  dueDate?:     string;     // fecha límite (opcional)
 }
 
 export const TICKETS: Ticket[] = [
   // Grupo 1 - Equipo Dev
-  { id:1,  titulo:'Implementar autenticación JWT',       descripcion:'Crear sistema de login con JWT y refresh tokens.',            status:'en_progreso', priority:'alta',    groupId:1, assignedToId:2, createdById:1, createdAt:'2025-03-01' },
-  { id:2,  titulo:'Refactorizar módulo de pagos',        descripcion:'Separar lógica de pagos en servicio independiente.',         status:'pendiente',   priority:'media',   groupId:1, assignedToId:1, createdById:1, createdAt:'2025-03-02' },
-  { id:3,  titulo:'Fix bug en paginación',               descripcion:'La paginación falla con más de 100 registros.',              status:'bloqueado',   priority:'critica', groupId:1, assignedToId:2, createdById:2, createdAt:'2025-03-03' },
-  { id:4,  titulo:'Deploy a producción v2.1',            descripcion:'Desplegar la versión 2.1 al servidor de producción.',        status:'hecho',       priority:'alta',    groupId:1, assignedToId:1, createdById:1, createdAt:'2025-03-04' },
-  { id:5,  titulo:'Actualizar dependencias npm',         descripcion:'Actualizar todas las dependencias a sus últimas versiones.',  status:'pendiente',   priority:'baja',    groupId:1, assignedToId:2, createdById:1, createdAt:'2025-03-05' },
-  { id:6,  titulo:'Documentar API REST',                 descripcion:'Escribir documentación Swagger para todos los endpoints.',   status:'en_progreso', priority:'media',   groupId:1, assignedToId:1, createdById:2, createdAt:'2025-03-06' },
+  { id:1,  titulo:'Implementar autenticación JWT',    descripcion:'Crear sistema de login con JWT y refresh tokens.',           status:'en_progreso', priority:'alta',    groupId:1, assignedToId:2, createdById:1, createdAt:'2025-03-01', dueDate:'2025-03-20' },
+  { id:2,  titulo:'Refactorizar módulo de pagos',     descripcion:'Separar lógica de pagos en servicio independiente.',        status:'pendiente',   priority:'media',   groupId:1, assignedToId:1, createdById:1, createdAt:'2025-03-02', dueDate:'2025-03-25' },
+  { id:3,  titulo:'Fix bug en paginación',            descripcion:'La paginación falla con más de 100 registros.',             status:'bloqueado',   priority:'critica', groupId:1, assignedToId:2, createdById:2, createdAt:'2025-03-03', dueDate:'2025-03-10' },
+  { id:4,  titulo:'Deploy a producción v2.1',         descripcion:'Desplegar la versión 2.1 al servidor de producción.',       status:'hecho',       priority:'alta',    groupId:1, assignedToId:1, createdById:1, createdAt:'2025-03-04' },
+  { id:5,  titulo:'Actualizar dependencias npm',      descripcion:'Actualizar todas las dependencias a sus últimas versiones.', status:'pendiente',   priority:'baja',    groupId:1, assignedToId:2, createdById:1, createdAt:'2025-03-05', dueDate:'2025-04-01' },
+  { id:6,  titulo:'Documentar API REST',              descripcion:'Escribir documentación Swagger para todos los endpoints.',  status:'en_progreso', priority:'media',   groupId:1, assignedToId:1, createdById:2, createdAt:'2025-03-06', dueDate:'2025-03-28' },
   // Grupo 2 - Soporte
-  { id:7,  titulo:'Cliente no puede iniciar sesión',     descripcion:'Usuario reporta error 403 al intentar autenticarse.',        status:'en_progreso', priority:'critica', groupId:2, assignedToId:3, createdById:1, createdAt:'2025-03-01' },
-  { id:8,  titulo:'Error en factura #4521',              descripcion:'La factura muestra monto incorrecto.',                       status:'pendiente',   priority:'alta',    groupId:2, assignedToId:3, createdById:3, createdAt:'2025-03-02' },
-  { id:9,  titulo:'Solicitud de reembolso',              descripcion:'Procesar reembolso por pedido cancelado.',                   status:'hecho',       priority:'media',   groupId:2, assignedToId:3, createdById:3, createdAt:'2025-03-03' },
-  { id:10, titulo:'Actualizar FAQ del portal',           descripcion:'Añadir nuevas preguntas frecuentes al portal de soporte.',   status:'bloqueado',   priority:'baja',    groupId:2, assignedToId:3, createdById:1, createdAt:'2025-03-04' },
+  { id:7,  titulo:'Cliente no puede iniciar sesión',  descripcion:'Usuario reporta error 403 al intentar autenticarse.',       status:'en_progreso', priority:'critica', groupId:2, assignedToId:3, createdById:1, createdAt:'2025-03-01', dueDate:'2025-03-08' },
+  { id:8,  titulo:'Error en factura #4521',           descripcion:'La factura muestra monto incorrecto.',                      status:'pendiente',   priority:'alta',    groupId:2, assignedToId:3, createdById:3, createdAt:'2025-03-02', dueDate:'2025-03-15' },
+  { id:9,  titulo:'Solicitud de reembolso',           descripcion:'Procesar reembolso por pedido cancelado.',                  status:'hecho',       priority:'media',   groupId:2, assignedToId:3, createdById:3, createdAt:'2025-03-03' },
+  { id:10, titulo:'Actualizar FAQ del portal',        descripcion:'Añadir nuevas preguntas frecuentes al portal de soporte.',  status:'bloqueado',   priority:'baja',    groupId:2, assignedToId:3, createdById:1, createdAt:'2025-03-04', dueDate:'2025-03-30' },
   // Grupo 3 - UX
-  { id:11, titulo:'Rediseñar pantalla de onboarding',    descripcion:'Mejorar el flujo de bienvenida para nuevos usuarios.',       status:'en_progreso', priority:'alta',    groupId:3, assignedToId:2, createdById:2, createdAt:'2025-03-01' },
-  { id:12, titulo:'Test de usabilidad v3',               descripcion:'Ejecutar pruebas con 5 usuarios reales del nuevo diseño.',   status:'pendiente',   priority:'media',   groupId:3, assignedToId:2, createdById:2, createdAt:'2025-03-02' },
-  { id:13, titulo:'Crear librería de componentes',       descripcion:'Definir tokens de diseño y componentes base.',               status:'hecho',       priority:'alta',    groupId:3, assignedToId:2, createdById:1, createdAt:'2025-03-03' },
+  { id:11, titulo:'Rediseñar pantalla de onboarding', descripcion:'Mejorar el flujo de bienvenida para nuevos usuarios.',      status:'en_progreso', priority:'alta',    groupId:3, assignedToId:2, createdById:2, createdAt:'2025-03-01', dueDate:'2025-03-22' },
+  { id:12, titulo:'Test de usabilidad v3',            descripcion:'Ejecutar pruebas con 5 usuarios reales del nuevo diseño.',  status:'pendiente',   priority:'media',   groupId:3, assignedToId:2, createdById:2, createdAt:'2025-03-02', dueDate:'2025-03-18' },
+  { id:13, titulo:'Crear librería de componentes',    descripcion:'Definir tokens de diseño y componentes base.',              status:'hecho',       priority:'alta',    groupId:3, assignedToId:2, createdById:1, createdAt:'2025-03-03' },
 ];

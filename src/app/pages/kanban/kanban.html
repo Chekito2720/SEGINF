@@ -1,0 +1,292 @@
+<p-toast position="top-right" />
+
+<div class="kb-wrap">
+
+    <!-- ══ HEADER ══════════════════════════════════════════════════════════ -->
+    <header class="kb-header">
+        <div class="kb-header-left">
+            <div class="kb-group-orb" [style.background]="group()?.color">
+                <i class="pi pi-objects-column"></i>
+            </div>
+            <div>
+                <h1>Tablero Kanban</h1>
+                <p>{{ group()?.nombre }} · {{ tickets().length }} tickets totales</p>
+            </div>
+        </div>
+
+        <ng-container *ifHasPermission="'ticket_add'">
+            <p-button label="Nuevo ticket" icon="pi pi-plus" styleClass="kb-create-btn" (onClick)="openCreate()" />
+        </ng-container>
+    </header>
+
+    <!-- ══ BOARD ════════════════════════════════════════════════════════════ -->
+    <div class="kb-board">
+
+        @for (col of columns; track col.status) {
+        <div class="kb-lane" [class.drag-over]="col.isDragOver" [style.--accent]="col.accent" [style.--glow]="col.glow"
+            (dragover)="onDragOver($event, col)" (dragleave)="onDragLeave(col)"
+            (drop)="onDrop($event, col.status, col)">
+
+            <!-- Lane header -->
+            <div class="kb-lane-head">
+                <span class="lane-indicator" [style.background]="col.accent"></span>
+                <i class="pi lane-icon" [ngClass]="col.icon" [style.color]="col.accent"></i>
+                <span class="lane-label">{{ col.label }}</span>
+                <span class="lane-count" [style.background]="col.glow" [style.color]="col.accent">{{
+                    counts()[col.status] }}</span>
+            </div>
+
+            <!-- Drop zone hint -->
+            <div class="drop-hint" [class.visible]="col.isDragOver && draggingId() !== null">
+                <i class="pi pi-arrow-circle-down"></i>
+                <span>Soltar aquí</span>
+            </div>
+
+            <!-- Cards -->
+            <div class="kb-cards">
+                @for (ticket of colTickets(col.status); track ticket.id) {
+
+                <div class="kb-card" [class.is-dragging]="draggingId() === ticket.id"
+                    [class.overdue]="isOverdue(ticket.dueDate) && ticket.status !== 'hecho'"
+                    [attr.draggable]="permsSvc.hasPermission('ticket_edit')" (dragstart)="onDragStart($event, ticket)"
+                    (dragend)="onDragEnd()" (click)="openDetail(ticket)">
+
+                    <!-- Card top row -->
+                    <div class="kb-card-top">
+                        <span class="kb-card-id">#{{ ticket.id }}</span>
+                        <span class="kb-prio" [style.color]="priorityMeta(ticket.priority).color"
+                            [style.background]="priorityMeta(ticket.priority).bg">{{ ticket.priority }}</span>
+                    </div>
+
+                    <!-- Title -->
+                    <h3 class="kb-card-title">{{ ticket.titulo }}</h3>
+
+                    <!-- Description preview -->
+                    <p class="kb-card-desc">{{ ticket.descripcion }}</p>
+
+                    <!-- Footer -->
+                    <div class="kb-card-foot">
+                        <div class="kb-assignee">
+                            <div class="kb-avatar">{{ assigneeInitial(ticket.assignedToId) }}</div>
+                            <span>{{ assigneeName(ticket.assignedToId) }}</span>
+                        </div>
+
+                        <div class="kb-dates">
+                            <span class="kb-created">
+                                <i class="pi pi-calendar"></i>
+                                {{ ticket.createdAt }}
+                            </span>
+                            @if (ticket.dueDate) {
+                            <span class="kb-due"
+                                [class.overdue-text]="isOverdue(ticket.dueDate) && ticket.status !== 'hecho'">
+                                <i class="pi pi-flag"></i>
+                                {{ ticket.dueDate }}
+                            </span>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Drag handle -->
+                    @if (permsSvc.hasPermission('ticket_edit')) {
+                    <div class="kb-drag-handle" pTooltip="Arrastrar" tooltipPosition="top">
+                        <i class="pi pi-equals"></i>
+                    </div>
+                    }
+
+                </div>
+
+                }
+
+                <!-- Empty lane -->
+                @if (colTickets(col.status).length === 0 && !col.isDragOver) {
+                <div class="kb-empty">
+                    <i class="pi pi-inbox"></i>
+                    <span>Sin tickets</span>
+                </div>
+                }
+
+            </div>
+        </div>
+        }
+
+    </div>
+</div>
+
+<!-- ══ DETAIL / EDIT MODAL ═════════════════════════════════════════════════ -->
+<p-dialog [(visible)]="showDetail" [modal]="true" [closable]="true" [draggable]="false" [style]="{ width: '560px' }"
+    styleClass="kb-dialog" (onHide)="editMode.set(false)">
+    <ng-template pTemplate="header">
+        <div class="dlg-head">
+            @if (!editMode()) {
+            <span class="dlg-id">#{{ selected()?.id }}</span>
+            <span class="dlg-title-text">{{ selected()?.titulo }}</span>
+            } @else {
+            <i class="pi pi-pencil" style="color:#7c6af7"></i>
+            <span class="dlg-title-text">Editar ticket</span>
+            }
+        </div>
+    </ng-template>
+
+    <!-- ── VIEW mode ──────────────────────────────────────────────────────── -->
+    @if (!editMode() && selected()) {
+    <div class="dlg-view">
+
+        <div class="detail-badges">
+            <span class="detail-status-chip" [style.background]="col(selected()!.status).glow"
+                [style.color]="col(selected()!.status).accent">
+                <i class="pi" [ngClass]="col(selected()!.status).icon"></i>
+                {{ col(selected()!.status).label }}
+            </span>
+            <span class="kb-prio" [style.color]="priorityMeta(selected()!.priority).color"
+                [style.background]="priorityMeta(selected()!.priority).bg">
+                {{ selected()!.priority }}
+            </span>
+        </div>
+
+        <p class="detail-desc">{{ selected()!.descripcion || 'Sin descripción.' }}</p>
+
+        <div class="detail-meta-grid">
+            <div class="dmeta-item">
+                <span class="dmeta-label"><i class="pi pi-user"></i> Asignado a</span>
+                <span class="dmeta-val">{{ assigneeName(selected()!.assignedToId) }}</span>
+            </div>
+            <div class="dmeta-item">
+                <span class="dmeta-label"><i class="pi pi-user-plus"></i> Creado por</span>
+                <span class="dmeta-val">{{ assigneeName(selected()!.createdById) }}</span>
+            </div>
+            <div class="dmeta-item">
+                <span class="dmeta-label"><i class="pi pi-calendar"></i> Fecha creación</span>
+                <span class="dmeta-val">{{ selected()!.createdAt }}</span>
+            </div>
+            @if (selected()!.dueDate) {
+            <div class="dmeta-item">
+                <span class="dmeta-label"><i class="pi pi-flag"></i> Fecha límite</span>
+                <span class="dmeta-val"
+                    [class.overdue-text]="isOverdue(selected()!.dueDate) && selected()!.status !== 'hecho'">
+                    {{ selected()!.dueDate }}
+                    @if (isOverdue(selected()!.dueDate) && selected()!.status !== 'hecho') {
+                    <span class="overdue-badge">Vencido</span>
+                    }
+                </span>
+            </div>
+            }
+        </div>
+    </div>
+
+    <ng-template pTemplate="footer">
+        <ng-container *ifHasPermission="'ticket_delete'">
+            <p-button icon="pi pi-trash" label="Eliminar" severity="danger" [text]="true"
+                (onClick)="deleteSelected()" />
+        </ng-container>
+        <ng-container *ifHasPermission="'ticket_edit'">
+            <p-button icon="pi pi-pencil" label="Editar" (onClick)="enterEditMode()" />
+        </ng-container>
+    </ng-template>
+    }
+
+    <!-- ── EDIT mode ──────────────────────────────────────────────────────── -->
+    @if (editMode()) {
+    <div class="dlg-form">
+
+        <div class="dlg-field">
+            <label>Título <span class="req">*</span></label>
+            <input pInputText [(ngModel)]="editForm.titulo" placeholder="Título del ticket" class="dlg-input" />
+        </div>
+
+        <div class="dlg-field">
+            <label>Descripción</label>
+            <textarea pTextarea [(ngModel)]="editForm.descripcion" placeholder="Detalla el problema o tarea..." rows="3"
+                class="dlg-textarea"></textarea>
+        </div>
+
+        <div class="dlg-row">
+            <div class="dlg-field">
+                <label>Estado</label>
+                <p-select [(ngModel)]="editForm.status" [options]="statusOpts" optionLabel="label" optionValue="value"
+                    styleClass="dlg-select" />
+            </div>
+            <div class="dlg-field">
+                <label>Prioridad</label>
+                <p-select [(ngModel)]="editForm.priority" [options]="priorityOpts" optionLabel="label"
+                    optionValue="value" styleClass="dlg-select" />
+            </div>
+        </div>
+
+        <div class="dlg-row">
+            <div class="dlg-field">
+                <label>Asignado a</label>
+                <p-select [(ngModel)]="editForm.assignedToId" [options]="memberOpts" optionLabel="label"
+                    optionValue="value" styleClass="dlg-select" />
+            </div>
+            <div class="dlg-field">
+                <label>Fecha límite</label>
+                <input pInputText type="date" [(ngModel)]="editForm.dueDate" class="dlg-input" />
+            </div>
+        </div>
+
+    </div>
+
+    <ng-template pTemplate="footer">
+        <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="editMode.set(false)" />
+        <p-button label="Guardar cambios" icon="pi pi-check" [disabled]="formInvalid" (onClick)="saveEdit()" />
+    </ng-template>
+    }
+
+</p-dialog>
+
+<!-- ══ CREATE MODAL ═════════════════════════════════════════════════════════ -->
+<p-dialog [(visible)]="showCreate" [modal]="true" [closable]="true" [draggable]="false" [style]="{ width: '520px' }"
+    styleClass="kb-dialog">
+    <ng-template pTemplate="header">
+        <div class="dlg-head">
+            <i class="pi pi-plus-circle" style="color:#7c6af7"></i>
+            <span class="dlg-title-text">Nuevo ticket</span>
+        </div>
+    </ng-template>
+
+    <div class="dlg-form">
+
+        <div class="dlg-field">
+            <label>Título <span class="req">*</span></label>
+            <input pInputText [(ngModel)]="editForm.titulo" placeholder="¿Qué hay que resolver?" class="dlg-input" />
+        </div>
+
+        <div class="dlg-field">
+            <label>Descripción</label>
+            <textarea pTextarea [(ngModel)]="editForm.descripcion" placeholder="Detalla el contexto o pasos a seguir..."
+                rows="3" class="dlg-textarea"></textarea>
+        </div>
+
+        <div class="dlg-row">
+            <div class="dlg-field">
+                <label>Estado</label>
+                <p-select [(ngModel)]="editForm.status" [options]="statusOpts" optionLabel="label" optionValue="value"
+                    styleClass="dlg-select" />
+            </div>
+            <div class="dlg-field">
+                <label>Prioridad</label>
+                <p-select [(ngModel)]="editForm.priority" [options]="priorityOpts" optionLabel="label"
+                    optionValue="value" styleClass="dlg-select" />
+            </div>
+        </div>
+
+        <div class="dlg-row">
+            <div class="dlg-field">
+                <label>Asignado a</label>
+                <p-select [(ngModel)]="editForm.assignedToId" [options]="memberOpts" optionLabel="label"
+                    optionValue="value" styleClass="dlg-select" />
+            </div>
+            <div class="dlg-field">
+                <label>Fecha límite</label>
+                <input pInputText type="date" [(ngModel)]="editForm.dueDate" class="dlg-input" />
+            </div>
+        </div>
+
+    </div>
+
+    <ng-template pTemplate="footer">
+        <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="showCreate.set(false)" />
+        <p-button label="Crear ticket" icon="pi pi-plus" [disabled]="formInvalid" (onClick)="saveCreate()" />
+    </ng-template>
+
+</p-dialog>

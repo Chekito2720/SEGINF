@@ -30,6 +30,7 @@ export const routes: Routes = [
     loadComponent: () => import('./Layout/main-layout/main-layout').then(m => m.MainLayoutComponent),
     children: [
       { path: '',           loadComponent: () => import('./pages/home/home').then(m => m.HomeComponent) },
+      { path: 'kanban',     loadComponent: () => import('./pages/kanban/kanban').then(m => m.KanbanComponent) },
       { path: 'rud',        loadComponent: () => import('./pages/rud/rud').then(m => m.RudComponent)        },
       { path: 'crud',       loadComponent: () => import('./pages/crud/crud').then(m => m.CrudComponent)     },
       { path: 'groups',     loadComponent: () => import('./pages/groups/groups').then(m => m.GroupsComponent) },

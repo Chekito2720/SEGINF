@@ -27,7 +27,8 @@ export class SidebarComponent {
   collapsed = signal(false);
 
   navItems: NavItem[] = [
-    { label: 'Dashboard',  icon: 'pi-objects-column', route: '/home'         },
+    { label: 'Dashboard',  icon: 'pi-objects-column', route: '/home'                                     },
+    { label: 'Kanban',     icon: 'pi-table',          route: '/home/kanban', permission: 'tickets_view' },
     { label: 'Mi Cuenta',  icon: 'pi-user',           route: '/home/rud',    permission: 'user_view'    },
     { label: 'Grupos',     icon: 'pi-users',          route: '/home/crud',   permission: 'groups_view'  },
     { label: 'Tickets',    icon: 'pi-ticket',         route: '/home/groups', permission: 'tickets_view' },

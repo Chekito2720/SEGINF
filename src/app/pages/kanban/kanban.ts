@@ -1,0 +1,266 @@
+import {
+  Component, OnInit, signal, computed, ChangeDetectorRef
+} from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { ButtonModule }     from 'primeng/button';
+import { DialogModule }     from 'primeng/dialog';
+import { InputTextModule }  from 'primeng/inputtext';
+import { TextareaModule }   from 'primeng/textarea';
+import { SelectModule }     from 'primeng/select';
+import { ToastModule }      from 'primeng/toast';
+import { TooltipModule }    from 'primeng/tooltip';
+import { TagModule }        from 'primeng/tag';
+import { MessageService }   from 'primeng/api';
+import { AuthService }       from '../../Services/Auth.service';
+import { TicketService }     from '../../Services/Ticket.service';
+import { PermissionsService } from '../../Services/Permissions.service';
+import { HasPermissionDirective } from '../../directives/Has permission.directive';
+import {
+  Ticket, TicketStatus, TicketPriority, AppGroup, USERS
+} from '../../models/Auth.model';
+
+export interface TicketForm {
+  titulo:       string;
+  descripcion:  string;
+  status:       TicketStatus;
+  priority:     TicketPriority;
+  groupId:      number;
+  assignedToId: number;
+  createdById:  number;
+  dueDate:      string;
+}
+
+export interface KanbanColumn {
+  status: TicketStatus;
+  label:  string;
+  accent: string;
+  glow:   string;
+  icon:   string;
+  isDragOver: boolean;
+}
+
+@Component({
+  selector: 'app-kanban',
+  standalone: true,
+  imports: [
+    CommonModule, FormsModule,
+    ButtonModule, DialogModule, InputTextModule, TextareaModule,
+    SelectModule, ToastModule, TooltipModule, TagModule,
+    HasPermissionDirective,
+  ],
+  providers: [MessageService],
+  templateUrl: './kanban.html',
+  styleUrl:    './kanban.css',
+})
+export class KanbanComponent implements OnInit {
+
+  group   = signal<AppGroup | null>(null);
+  tickets = signal<Ticket[]>([]);
+
+  // ── Drag state ──────────────────────────────────────────────────────────
+  draggingId = signal<number | null>(null);
+
+  // ── Detail / Edit modal ─────────────────────────────────────────────────
+  showDetail  = signal(false);
+  showCreate  = signal(false);
+  selected    = signal<Ticket | null>(null);
+  editMode    = signal(false);
+
+  editForm: TicketForm = {
+    titulo: '', descripcion: '', status: 'pendiente', priority: 'media',
+    groupId: 0, assignedToId: 1, createdById: 1, dueDate: '',
+  };
+
+  // ── Columns ─────────────────────────────────────────────────────────────
+  columns: KanbanColumn[] = [
+    { status:'pendiente',   label:'Pendiente',   accent:'#f59e0b', glow:'rgba(245,158,11,.14)',  icon:'pi-clock',         isDragOver:false },
+    { status:'en_progreso', label:'En progreso', accent:'#38bdf8', glow:'rgba(56,189,248,.14)',  icon:'pi-refresh',       isDragOver:false },
+    { status:'hecho',       label:'Hecho',       accent:'#4ade80', glow:'rgba(74,222,128,.14)',  icon:'pi-check-circle',  isDragOver:false },
+    { status:'bloqueado',   label:'Bloqueado',   accent:'#f87171', glow:'rgba(248,113,113,.14)', icon:'pi-ban',           isDragOver:false },
+  ];
+
+  statusOpts   = this.columns.map(c => ({ label: c.label, value: c.status }));
+  priorityOpts: { label: string; value: TicketPriority }[] = [
+    { label:'Baja',    value:'baja'    },
+    { label:'Media',   value:'media'   },
+    { label:'Alta',    value:'alta'    },
+    { label:'Crítica', value:'critica' },
+  ];
+  memberOpts = USERS.map(u => ({ label: u.fullName, value: u.id }));
+
+  constructor(
+    public  authSvc:   AuthService,
+    public  permsSvc:  PermissionsService,
+    private ticketSvc: TicketService,
+    private msgSvc:    MessageService,
+    private cdr:       ChangeDetectorRef,
+  ) {}
+
+  ngOnInit() {
+    this.group.set(this.authSvc.getGroup());
+    this.loadTickets();
+  }
+
+  loadTickets() {
+    const g    = this.group();
+    const user = this.authSvc.getUser();
+    if (!g || !user) return;
+    const list = this.permsSvc.hasPermission('tickets_view')
+      ? this.ticketSvc.getByGroup(g.id)
+      : this.ticketSvc.getByGroupAndUser(g.id, user.id);
+    this.tickets.set([...list]);
+  }
+
+  colTickets(status: TicketStatus): Ticket[] {
+    return this.tickets().filter(t => t.status === status);
+  }
+
+  col(status: TicketStatus): KanbanColumn {
+    return this.columns.find(c => c.status === status)!;
+  }
+
+  counts = computed(() => {
+    const t = this.tickets();
+    return {
+      pendiente:   t.filter(x => x.status === 'pendiente').length,
+      en_progreso: t.filter(x => x.status === 'en_progreso').length,
+      hecho:       t.filter(x => x.status === 'hecho').length,
+      bloqueado:   t.filter(x => x.status === 'bloqueado').length,
+    };
+  });
+
+  // ── Drag & Drop (HTML5 native) ─────────────────────────────────────────
+  onDragStart(event: DragEvent, ticket: Ticket) {
+    if (!this.permsSvc.hasPermission('ticket_edit')) {
+      event.preventDefault();
+      return;
+    }
+    this.draggingId.set(ticket.id);
+    event.dataTransfer!.effectAllowed = 'move';
+    event.dataTransfer!.setData('text/plain', String(ticket.id));
+    // ghost opacity via CSS class added in template
+  }
+
+  onDragEnd() {
+    this.draggingId.set(null);
+    this.columns.forEach(c => c.isDragOver = false);
+  }
+
+  onDragOver(event: DragEvent, col: KanbanColumn) {
+    event.preventDefault();
+    event.dataTransfer!.dropEffect = 'move';
+    col.isDragOver = true;
+  }
+
+  onDragLeave(col: KanbanColumn) {
+    col.isDragOver = false;
+  }
+
+  onDrop(event: DragEvent, targetStatus: TicketStatus, col: KanbanColumn) {
+    event.preventDefault();
+    col.isDragOver = false;
+    const id = this.draggingId();
+    if (id == null) return;
+
+    this.ticketSvc.changeStatus(id, targetStatus);
+    this.loadTickets();
+    this.draggingId.set(null);
+
+    const colDef = this.col(targetStatus);
+    this.msgSvc.add({
+      severity: 'success',
+      summary: 'Movido',
+      detail: `Ticket #${id} → ${colDef.label}`,
+      life: 2000,
+    });
+  }
+
+  // ── Detail modal ───────────────────────────────────────────────────────
+  openDetail(ticket: Ticket) {
+    this.selected.set({ ...ticket });
+    this.editMode.set(false);
+    this.showDetail.set(true);
+  }
+
+  enterEditMode() {
+    const t = this.selected();
+    if (!t) return;
+    this.editForm = {
+      titulo:       t.titulo,
+      descripcion:  t.descripcion,
+      status:       t.status,
+      priority:     t.priority,
+      groupId:      t.groupId,
+      assignedToId: t.assignedToId,
+      createdById:  t.createdById,
+      dueDate:      t.dueDate ?? '',
+    };
+    this.editMode.set(true);
+  }
+
+  saveEdit() {
+    const t = this.selected();
+    if (!t || !this.editForm.titulo.trim()) return;
+    this.ticketSvc.update(t.id, this.editForm);
+    this.loadTickets();
+    this.editMode.set(false);
+    this.selected.set({ ...t, ...this.editForm });
+    this.msgSvc.add({ severity:'success', summary:'Guardado', detail:'Ticket actualizado.', life:2500 });
+  }
+
+  deleteSelected() {
+    const t = this.selected();
+    if (!t) return;
+    this.ticketSvc.delete(t.id);
+    this.loadTickets();
+    this.showDetail.set(false);
+    this.msgSvc.add({ severity:'warn', summary:'Eliminado', detail:`Ticket #${t.id} eliminado.`, life:2500 });
+  }
+
+  // ── Create modal ───────────────────────────────────────────────────────
+  openCreate() {
+    this.editForm = {
+      titulo: '', descripcion: '', status: 'pendiente', priority: 'media',
+      groupId:      this.group()?.id ?? 0,
+      assignedToId: this.authSvc.getUser()?.id ?? 1,
+      createdById:  this.authSvc.getUser()?.id ?? 1,
+      dueDate: '',
+    };
+    this.showCreate.set(true);
+  }
+
+  saveCreate() {
+    if (!this.editForm.titulo.trim()) return;
+    this.ticketSvc.add(this.editForm);
+    this.loadTickets();
+    this.showCreate.set(false);
+    this.msgSvc.add({ severity:'success', summary:'Creado', detail:'Ticket creado.', life:2500 });
+  }
+
+  // ── Helpers ────────────────────────────────────────────────────────────
+  assigneeName(id: number): string {
+    return USERS.find(u => u.id === id)?.fullName ?? '—';
+  }
+
+  assigneeInitial(id: number): string {
+    return this.assigneeName(id).charAt(0).toUpperCase();
+  }
+
+  priorityMeta(p: TicketPriority): { color: string; bg: string } {
+    const map: Record<TicketPriority, { color:string; bg:string }> = {
+      baja:    { color:'#4ade80', bg:'rgba(74,222,128,.14)'   },
+      media:   { color:'#f59e0b', bg:'rgba(245,158,11,.14)'   },
+      alta:    { color:'#f87171', bg:'rgba(248,113,113,.14)'  },
+      critica: { color:'#e11d48', bg:'rgba(225,29,72,.16)'    },
+    };
+    return map[p] ?? { color:'#9a9cc0', bg:'rgba(154,156,192,.12)' };
+  }
+
+  isOverdue(dueDate?: string): boolean {
+    if (!dueDate) return false;
+    return new Date(dueDate) < new Date();
+  }
+
+  get formInvalid() { return !this.editForm.titulo.trim(); }
+}
