@@ -1,13 +1,19 @@
 <aside class="sidebar" [class.collapsed]="collapsed()">
 
-    <!-- Header -->
+    <!-- Header: grupo activo -->
     <div class="sidebar-header">
         @if (!collapsed()) {
-        <div class="brand">
-            <i class="pi pi-shield"></i>
-            <span class="brand-name">Mi App</span>
+        <div class="group-info">
+            <i class="pi pi-shield group-icon"></i>
+            <div>
+                <span class="group-name">{{ authSvc.getGroup()?.nombre ?? 'Mi App' }}</span>
+                <span class="group-sub">{{ authSvc.getUser()?.fullName }}</span>
+            </div>
         </div>
+        } @else {
+        <i class="pi pi-shield group-icon-sm"></i>
         }
+
         <p-button [icon]="collapsed() ? 'pi pi-chevron-right' : 'pi pi-chevron-left'" [rounded]="true" [text]="true"
             severity="secondary" (onClick)="toggle()" [pTooltip]="collapsed() ? 'Expandir' : 'Colapsar'"
             tooltipPosition="right" />
@@ -15,15 +21,13 @@
 
     <p-divider styleClass="sidebar-divider" />
 
-    <!-- Nav -->
+    <!-- Nav filtrado por permisos -->
     <nav class="sidebar-nav">
-        @for (item of navItems; track item.route) {
+        @for (item of visibleItems; track item.route) {
         <a [routerLink]="item.route" routerLinkActive="active" class="nav-item"
             [pTooltip]="collapsed() ? item.label : ''" tooltipPosition="right">
             <i class="pi" [ngClass]="item.icon"></i>
-            @if (!collapsed()) {
-            <span>{{ item.label }}</span>
-            }
+            @if (!collapsed()) { <span>{{ item.label }}</span> }
         </a>
         }
     </nav>
@@ -32,14 +36,22 @@
 
     <p-divider styleClass="sidebar-divider" />
 
-    <!-- Footer -->
+    <!-- Footer: usuario + logout -->
     <div class="sidebar-footer">
-        <a routerLink="/auth/login" class="nav-item logout" [pTooltip]="collapsed() ? 'Cerrar sesión' : ''"
-            tooltipPosition="right">
+        @if (!collapsed()) {
+        <div class="user-row">
+            <div class="user-avatar">{{ authSvc.getUser()?.fullName?.charAt(0) ?? 'U' }}</div>
+            <div class="user-info">
+                <span class="user-name">{{ authSvc.getUser()?.username }}</span>
+                <span class="user-perms">{{ authSvc.getUser()?.permissions?.length }} permisos</span>
+            </div>
+        </div>
+        }
+
+        <a routerLink="/auth/login" class="nav-item logout" (click)="logout()"
+            [pTooltip]="collapsed() ? 'Cerrar sesión' : ''" tooltipPosition="right">
             <i class="pi pi-sign-out"></i>
-            @if (!collapsed()) {
-            <span>Cerrar sesión</span>
-            }
+            @if (!collapsed()) { <span>Cerrar sesión</span> }
         </a>
     </div>
 

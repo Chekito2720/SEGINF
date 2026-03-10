@@ -7,75 +7,82 @@ import { InputTextModule } from 'primeng/inputtext';
 import { PasswordModule } from 'primeng/password';
 import { CheckboxModule } from 'primeng/checkbox';
 import { MessageModule } from 'primeng/message';
-
-// Credenciales hardcodeadas
-const VALID_USERS = [
-  { email: 'admin@miapp.com',   password: 'Admin@12345' },
-  { email: 'usuario@miapp.com', password: 'Usuario@12345' },
-];
+import { CardModule } from 'primeng/card';
+import { TagModule } from 'primeng/tag';
+import { BadgeModule } from 'primeng/badge';
+import { DividerModule } from 'primeng/divider';
+import { AuthService } from '../../../Services/Auth.service';
+import { AppGroup, AppUser } from '../../../models/Auth.model';
 
 @Component({
   selector: 'app-login',
   standalone: true,
   imports: [
-    CommonModule,
-    FormsModule,
-    ReactiveFormsModule,
-    RouterLink,
-    ButtonModule,
-    InputTextModule,
-    PasswordModule,
-    CheckboxModule,
-    MessageModule,
+    CommonModule, FormsModule, ReactiveFormsModule, RouterLink,
+    ButtonModule, InputTextModule, PasswordModule, CheckboxModule,
+    MessageModule, CardModule, TagModule, BadgeModule, DividerModule,
   ],
   templateUrl: './login.html',
   styleUrl: './login.css'
 })
 export class LoginComponent {
+  // Paso 1 = formulario, Paso 2 = selección de grupo
+  step         = signal<1 | 2>(1);
   loading      = signal(false);
   errorMessage = signal('');
   rememberMe   = false;
 
+  loggedUser   = signal<AppUser | null>(null);
+  userGroups   = signal<AppGroup[]>([]);
+
   form: any;
 
-  constructor(private fb: FormBuilder, private router: Router) {
+  constructor(
+    private fb:       FormBuilder,
+    private router:   Router,
+    private authSvc:  AuthService,
+  ) {
     this.form = this.fb.group({
       email:    ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required, Validators.minLength(6)]],
     });
   }
 
-  get emailInvalid() {
-    const ctrl = this.form.get('email');
-    return ctrl?.invalid && ctrl?.touched;
-  }
+  get emailInvalid()    { const c = this.form.get('email');    return c?.invalid && c?.touched; }
+  get passwordInvalid() { const c = this.form.get('password'); return c?.invalid && c?.touched; }
 
-  get passwordInvalid() {
-    const ctrl = this.form.get('password');
-    return ctrl?.invalid && ctrl?.touched;
-  }
-
+  // ── Paso 1: autenticar ────────────────────────────────────────────────────
   async onSubmit() {
-    if (this.form.invalid) {
-      this.form.markAllAsTouched();
-      return;
-    }
+    if (this.form.invalid) { this.form.markAllAsTouched(); return; }
 
     this.loading.set(true);
     this.errorMessage.set('');
-
-    // Simular delay de red
-    await new Promise(r => setTimeout(r, 1000));
+    await new Promise(r => setTimeout(r, 900));
 
     const { email, password } = this.form.value;
-    const user = VALID_USERS.find(u => u.email === email && u.password === password);
-
+    const user = this.authSvc.login(email!, password!);
     this.loading.set(false);
 
-    if (user) {
-      this.router.navigate(['/home']);
-    } else {
+    if (!user) {
       this.errorMessage.set('Correo o contraseña incorrectos.');
+      return;
     }
+
+    this.loggedUser.set(user);
+    this.userGroups.set(this.authSvc.getUserGroups());
+    this.step.set(2);
+  }
+
+  // ── Paso 2: elegir grupo ──────────────────────────────────────────────────
+  selectGroup(groupId: number) {
+    this.authSvc.selectGroup(groupId);
+    this.router.navigate(['/home']);
+  }
+
+  backToLogin() {
+    this.authSvc.logout();
+    this.step.set(1);
+    this.form.reset();
+    this.errorMessage.set('');
   }
 }

@@ -1,5 +1,8 @@
 <div class="auth-wrapper">
-    <div class="auth-card">
+    <div class="auth-card" [class.wide]="step() === 2">
+
+        <!-- ══ PASO 1: LOGIN ══════════════════════════════════════════════════ -->
+        @if (step() === 1) {
 
         <div class="auth-header">
             <i class="pi pi-lock brand-icon"></i>
@@ -20,8 +23,7 @@
                 @if (emailInvalid) {
                 <span class="field-error">
                     <i class="pi pi-exclamation-circle"></i>
-                    {{ form.get('email')?.errors?.['required'] ? 'El correo es requerido' : 'Ingresa un correo válido'
-                    }}
+                    {{ form.get('email')?.errors?.['required'] ? 'El correo es requerido' : 'Correo inválido' }}
                 </span>
                 }
             </div>
@@ -41,28 +43,88 @@
 
             <div class="options-row">
                 <div class="remember-me">
-                    <p-checkbox [(ngModel)]="rememberMe" [ngModelOptions]="{standalone: true}" inputId="remember"
+                    <p-checkbox [(ngModel)]="rememberMe" [ngModelOptions]="{standalone:true}" inputId="remember"
                         [binary]="true" />
                     <label for="remember">Recordarme</label>
                 </div>
-                <a routerLink="/auth/forgot-password" class="forgot-link">¿Olvidaste tu contraseña?</a>
             </div>
 
-            <p-button type="submit" label="Iniciar sesión" [loading]="loading()" [disabled]="form.invalid"
-                styleClass="w-full submit-btn" />
+            <p-button type="submit" label="Iniciar sesión" icon="pi pi-sign-in" iconPos="right" [loading]="loading()"
+                [disabled]="form.invalid" styleClass="w-full submit-btn" />
 
         </form>
 
         <!-- Credenciales de prueba -->
-        <div class="demo-credentials">
+        <div class="demo-box">
             <p class="demo-title"><i class="pi pi-info-circle"></i> Credenciales de prueba</p>
-            <div class="demo-row"><span>admin&#64;miapp.com</span><span>Admin&#64;12345</span></div>
-            <div class="demo-row"><span>usuario&#64;miapp.com</span><span>Usuario&#64;12345</span></div>
+            <div class="demo-row">
+                <span class="demo-label">SuperAdmin</span>
+                <span>admin&#64;miapp.com / Admin&#64;12345</span>
+            </div>
+            <div class="demo-row">
+                <span class="demo-label">Admin Grupo</span>
+                <span>ana&#64;miapp.com / Usuario&#64;12345</span>
+            </div>
+            <div class="demo-row">
+                <span class="demo-label">Miembro</span>
+                <span>carlos&#64;miapp.com / Carlos&#64;12345</span>
+            </div>
         </div>
 
         <p class="auth-footer">
             ¿No tienes cuenta? <a routerLink="/auth/register">Regístrate</a>
         </p>
+
+        }
+
+        <!-- ══ PASO 2: SELECCIÓN DE GRUPO ══════════════════════════════════════ -->
+        @if (step() === 2) {
+
+        <div class="auth-header">
+            <i class="pi pi-users brand-icon"></i>
+            <h1>Selecciona un grupo</h1>
+            <p>Hola, <strong>{{ loggedUser()?.fullName }}</strong>. ¿A qué grupo deseas acceder?</p>
+        </div>
+
+        <div class="groups-grid">
+            @for (group of userGroups(); track group.id) {
+            <div class="group-card" [style.background]="group.color" (click)="selectGroup(group.id)">
+
+                <div class="group-card-top">
+                    <span class="group-name">{{ group.nombre }}</span>
+                    <p-tag [value]="group.nivel" styleClass="nivel-tag" />
+                </div>
+
+                <p class="group-desc">{{ group.descripcion }}</p>
+
+                <p-divider styleClass="group-divider" />
+
+                <div class="group-meta">
+                    <span><i class="pi pi-users"></i> {{ group.integrantes }} integrantes</span>
+                    <span><i class="pi pi-ticket"></i> {{ group.tickets }} tickets</span>
+                </div>
+
+                <!-- Modelo LLM con el mismo color del fondo, solo texto diferenciado -->
+                <div class="group-model">
+                    <i class="pi pi-microchip-ai"></i>
+                    <span>{{ group.model }}</span>
+                </div>
+
+                <div class="group-enter">
+                    <span>Entrar</span>
+                    <i class="pi pi-arrow-right"></i>
+                </div>
+
+            </div>
+            }
+        </div>
+
+        <div class="back-row">
+            <p-button label="Volver al login" icon="pi pi-arrow-left" [text]="true" severity="secondary"
+                (onClick)="backToLogin()" />
+        </div>
+
+        }
 
     </div>
 </div>

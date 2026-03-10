@@ -5,7 +5,7 @@
     justify-content: center;
     background: #0d0f1a;
     padding: 2rem;
-    /*font-family: 'DM Sans', sans-serif;*/
+    font-family: 'DM Sans', sans-serif;
 }
 
 .auth-card {
@@ -44,7 +44,7 @@
 }
 
 .auth-header h1 {
-    /*font-family: 'Playfair Display', serif;*/
+    font-family: 'DM Sans', sans-serif;
     font-size: 1.75rem;
     color: #f0f0ff;
     margin-bottom: 0.35rem;
@@ -93,7 +93,7 @@
     border-radius: 8px !important;
     padding: 0.75rem 1rem !important;
     width: 100%;
-    /*font-family: 'DM Sans', sans-serif;*/
+    font-family: 'DM Sans', sans-serif;
     transition: border-color 0.2s, box-shadow 0.2s;
 }
 
