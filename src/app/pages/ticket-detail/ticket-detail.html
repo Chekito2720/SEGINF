@@ -1,0 +1,284 @@
+<p-toast position="top-right" />
+
+@if (ticket(); as t) {
+<div class="td-wrap">
+
+    <!-- ══ TOPBAR ══════════════════════════════════════════════════════════ -->
+    <header class="td-topbar">
+        <button class="back-btn" (click)="goBack()">
+            <i class="pi pi-arrow-left"></i>
+            <span>Volver al tablero</span>
+        </button>
+        <span class="td-breadcrumb">
+            {{ group()?.nombre }} / <strong>#{{ t.id }}</strong>
+        </span>
+    </header>
+
+    <!-- ══ MAIN GRID ════════════════════════════════════════════════════════ -->
+    <div class="td-grid">
+
+        <!-- ── LEFT COLUMN: contenido ─────────────────────────────────────── -->
+        <div class="td-main">
+
+            <!-- Title -->
+            <div class="td-title-block">
+                @if (!editTitle()) {
+                <div class="td-title-row">
+                    <h1 class="td-title">{{ t.titulo }}</h1>
+                    @if (canEditFields) {
+                    <button class="icon-btn" (click)="startEditTitle()" pTooltip="Editar título">
+                        <i class="pi pi-pencil"></i>
+                    </button>
+                    }
+                </div>
+                } @else {
+                <div class="td-inline-edit">
+                    <input pInputText [(ngModel)]="draftTitle" class="td-input-lg" placeholder="Título del ticket"
+                        (keydown.enter)="saveTitle()" (keydown.escape)="editTitle.set(false)" />
+                    <button class="icon-btn accent" (click)="saveTitle()"><i class="pi pi-check"></i></button>
+                    <button class="icon-btn" (click)="editTitle.set(false)"><i class="pi pi-times"></i></button>
+                </div>
+                }
+                <div class="td-meta-row">
+                    <span class="td-id">#{{ t.id }}</span>
+                    <span class="td-created">
+                        <i class="pi pi-calendar"></i>
+                        Creado el {{ formatDate(t.createdAt) }}
+                    </span>
+                    <span class="td-creator">por {{ userName(t.createdById) }}</span>
+                </div>
+            </div>
+
+            <p-divider styleClass="td-divider" />
+
+            <!-- Description -->
+            <div class="td-section">
+                <div class="td-section-head">
+                    <i class="pi pi-align-left"></i>
+                    <span>Descripción</span>
+                    @if (canEditFields && !editDesc()) {
+                    <button class="icon-btn" (click)="startEditDesc()" pTooltip="Editar descripción">
+                        <i class="pi pi-pencil"></i>
+                    </button>
+                    }
+                </div>
+
+                @if (!editDesc()) {
+                <p class="td-desc">{{ t.descripcion || 'Sin descripción.' }}</p>
+                } @else {
+                <div class="td-inline-edit col">
+                    <textarea pTextarea [(ngModel)]="draftDesc" class="td-textarea"
+                        placeholder="Describe el problema o tarea..." rows="5">
+            </textarea>
+                    <div class="td-edit-actions">
+                        <button class="pill-btn accent" (click)="saveDesc()">
+                            <i class="pi pi-check"></i> Guardar
+                        </button>
+                        <button class="pill-btn" (click)="editDesc.set(false)">Cancelar</button>
+                    </div>
+                </div>
+                }
+            </div>
+
+            <p-divider styleClass="td-divider" />
+
+            <!-- ── Activity feed ────────────────────────────────────────────── -->
+            <div class="td-section">
+                <div class="td-section-head">
+                    <i class="pi pi-history"></i>
+                    <span>Actividad</span>
+                    <span class="td-count">{{ activity().length }}</span>
+                </div>
+
+                <!-- Comment box -->
+                @if (canComment) {
+                <div class="comment-box">
+                    <div class="comment-avatar" [style.background]="userColor(currentUser?.id ?? 0)">
+                        {{ userInitial(currentUser?.id ?? 0) }}
+                    </div>
+                    <div class="comment-input-wrap">
+                        <textarea [(ngModel)]="newComment" class="td-textarea comment-textarea"
+                            placeholder="Escribe un comentario..." rows="2"
+                            (keydown.ctrl.enter)="addComment()"></textarea>
+                        <div class="comment-footer">
+                            <span class="comment-hint">Ctrl+Enter para enviar</span>
+                            <button class="pill-btn accent" [disabled]="!newComment.trim() || submitting()"
+                                (click)="addComment()">
+                                <i class="pi" [ngClass]="submitting() ? 'pi-spin pi-spinner' : 'pi-send'"></i>
+                                Comentar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                }
+
+                <!-- Feed -->
+                <div class="activity-feed">
+                    @for (entry of activity(); track entry.id + entry.kind) {
+
+                    @if (entry.kind === 'comment') {
+                    <!-- Comment entry -->
+                    <div class="feed-comment">
+                        <div class="feed-avatar" [style.background]="userColor(entry.userId)">
+                            {{ userInitial(entry.userId) }}
+                        </div>
+                        <div class="feed-bubble">
+                            <div class="feed-meta">
+                                <strong>{{ userName(entry.userId) }}</strong>
+                                <span class="feed-time">{{ formatDate(entry.createdAt) }}</span>
+                            </div>
+                            <p class="feed-text">{{ entry.text }}</p>
+                        </div>
+                    </div>
+
+                    } @else {
+                    <!-- History entry -->
+                    <div class="feed-history">
+                        <div class="feed-hist-icon">
+                            <i class="pi" [ngClass]="historyIcon(entry.action!)"></i>
+                        </div>
+                        <div class="feed-hist-body">
+                            <span class="feed-hist-label">{{ historyLabel(entry) }}</span>
+                            @if (entry.from && entry.to) {
+                            <span class="feed-hist-change">
+                                <span class="from">{{ entry.from }}</span>
+                                <i class="pi pi-arrow-right"></i>
+                                <span class="to">{{ entry.to }}</span>
+                            </span>
+                            }
+                            @if (entry.note && !entry.from) {
+                            <span class="feed-hist-note">"{{ entry.note }}"</span>
+                            }
+                            <span class="feed-time">{{ formatDate(entry.createdAt) }}</span>
+                        </div>
+                    </div>
+                    }
+
+                    }
+
+                    @if (activity().length === 0) {
+                    <div class="feed-empty">
+                        <i class="pi pi-comment"></i>
+                        <span>Sin actividad todavía</span>
+                    </div>
+                    }
+                </div>
+            </div>
+
+        </div><!-- /td-main -->
+
+        <!-- ── RIGHT COLUMN: sidebar de propiedades ──────────────────────── -->
+        <aside class="td-sidebar">
+
+            <!-- Status -->
+            <div class="prop-card">
+                <span class="prop-label"><i class="pi pi-refresh"></i> Estado</span>
+                @if (canChangeStatus) {
+                <div class="status-pills">
+                    @for (s of statusOptions; track s.value) {
+                    <button class="status-pill" [class.active]="t.status === s.value" [style.--accent]="s.accent"
+                        (click)="changeStatus(s.value)">
+                        <span class="status-dot" [style.background]="s.accent"></span>
+                        {{ s.label }}
+                    </button>
+                    }
+                </div>
+                } @else {
+                <span class="prop-value status-chip" [style.background]="statusAccent(t.status) + '20'"
+                    [style.color]="statusAccent(t.status)">
+                    {{ statusLabel(t.status) }}
+                </span>
+                }
+            </div>
+
+            <!-- Priority (7 niveles en chino) -->
+            <div class="prop-card">
+                <span class="prop-label"><i class="pi pi-flag"></i> Prioridad</span>
+                <div class="priority-current" [style.color]="priorityMeta(t.priority).color"
+                    [style.background]="priorityMeta(t.priority).bg">
+                    <i class="pi" [ngClass]="priorityMeta(t.priority).icon"></i>
+                    <span class="prio-label">{{ priorityMeta(t.priority).label }}</span>
+                </div>
+                @if (canEditFields) {
+                <div class="priority-grid">
+                    @for (p of priorityOptions; track p.value) {
+                    <button class="prio-btn" [style.--pc]="p.color" [pTooltip]="p.label" tooltipPosition="top"
+                        (click)="changePriority(p.value)">
+                        <i class="pi" [ngClass]="p.icon"></i>
+                        <span>{{ p.label }}</span>
+                    </button>
+                    }
+                </div>
+                }
+            </div>
+
+            <!-- Assignee -->
+            <div class="prop-card">
+                <span class="prop-label"><i class="pi pi-user"></i> Asignado a</span>
+                <div class="assignee-current">
+                    <div class="td-avatar" [style.background]="userColor(t.assignedToId)">
+                        {{ userInitial(t.assignedToId) }}
+                    </div>
+                    <span>{{ userName(t.assignedToId) }}</span>
+                </div>
+                @if (canEditFields) {
+                <div class="member-list">
+                    @for (m of memberOptions; track m.value) {
+                    <button class="member-btn" [class.active]="t.assignedToId === m.value" (click)="reassign(m.value)">
+                        <div class="td-avatar sm" [style.background]="userColor(m.value)">
+                            {{ m.label.charAt(0) }}
+                        </div>
+                        <span>{{ m.label }}</span>
+                        @if (t.assignedToId === m.value) {
+                        <i class="pi pi-check ml-auto"></i>
+                        }
+                    </button>
+                    }
+                </div>
+                }
+            </div>
+
+            <!-- Dates -->
+            <div class="prop-card">
+                <span class="prop-label"><i class="pi pi-calendar"></i> Fechas</span>
+                <div class="dates-grid">
+                    <div class="date-item">
+                        <span class="date-lbl">Creación</span>
+                        <span class="date-val">{{ t.createdAt }}</span>
+                    </div>
+                    <div class="date-item">
+                        <span class="date-lbl">Límite</span>
+                        @if (canEditFields) {
+                        <input type="date" class="date-input" [value]="t.dueDate ?? ''"
+                            (change)="changeDueDate(($any($event.target)).value)" />
+                        } @else {
+                        <span class="date-val" [class.overdue]="isOverdue(t.dueDate)">
+                            {{ t.dueDate ?? '—' }}
+                            @if (isOverdue(t.dueDate) && t.status !== 'hecho') {
+                            <span class="overdue-badge">Vencido</span>
+                            }
+                        </span>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Group info -->
+            <div class="prop-card">
+                <span class="prop-label"><i class="pi pi-users"></i> Grupo</span>
+                <div class="group-info-row">
+                    <div class="group-dot" [style.background]="group()?.color"></div>
+                    <span>{{ group()?.nombre }}</span>
+                </div>
+            </div>
+
+        </aside>
+    </div><!-- /td-grid -->
+</div>
+} @else {
+<div class="td-not-found">
+    <i class="pi pi-exclamation-triangle"></i>
+    <h2>Ticket no encontrado</h2>
+    <button class="pill-btn accent" (click)="goBack()">Volver al tablero</button>
+</div>
+}

@@ -121,3 +121,71 @@ export const TICKETS: Ticket[] = [
   { id:12, titulo:'Test de usabilidad v3',            descripcion:'Ejecutar pruebas con 5 usuarios reales del nuevo diseño.',  status:'pendiente',   priority:'media',   groupId:3, assignedToId:2, createdById:2, createdAt:'2025-03-02', dueDate:'2025-03-18' },
   { id:13, titulo:'Crear librería de componentes',    descripcion:'Definir tokens de diseño y componentes base.',              status:'hecho',       priority:'alta',    groupId:3, assignedToId:2, createdById:1, createdAt:'2025-03-03' },
 ];
+
+// ─── Ticket Detail: 7 niveles de prioridad ───────────────────────────────────
+export type TicketPriorityExtended =
+  | 'minima'   // Mínima
+  | 'baja'     // Baja
+  | 'normal'   // Normal
+  | 'alta'     // Alta
+  | 'urgente'  // Urgente
+  | 'critica'  // Crítica
+  | 'bloqueante'; // Bloqueante
+
+export const PRIORITY_EXTENDED_META: Record<TicketPriorityExtended, {
+  label: string; icon: string; color: string; bg: string; rank: number;
+}> = {
+  minima:     { label:'Mínima',     icon:'pi-angle-double-down', color:'#64748b', bg:'rgba(100,116,139,.14)', rank:1 },
+  baja:       { label:'Baja',       icon:'pi-angle-down',        color:'#4ade80', bg:'rgba(74,222,128,.14)',  rank:2 },
+  normal:     { label:'Normal',     icon:'pi-minus',             color:'#38bdf8', bg:'rgba(56,189,248,.14)',  rank:3 },
+  alta:       { label:'Alta',       icon:'pi-angle-up',          color:'#f59e0b', bg:'rgba(245,158,11,.14)',  rank:4 },
+  urgente:    { label:'Urgente',    icon:'pi-angle-double-up',   color:'#fb923c', bg:'rgba(251,146,60,.14)',  rank:5 },
+  critica:    { label:'Crítica',    icon:'pi-exclamation-circle',color:'#f87171', bg:'rgba(248,113,113,.14)', rank:6 },
+  bloqueante: { label:'Bloqueante', icon:'pi-ban',               color:'#e11d48', bg:'rgba(225,29,72,.16)',   rank:7 },
+};
+
+// ─── Comentario ───────────────────────────────────────────────────────────────
+export interface TicketComment {
+  id:        number;
+  ticketId:  number;
+  userId:    number;
+  text:      string;
+  createdAt: string;
+}
+
+// ─── Entrada de historial ─────────────────────────────────────────────────────
+export type HistoryAction =
+  | 'created' | 'status_changed' | 'priority_changed'
+  | 'assigned' | 'title_changed' | 'description_changed'
+  | 'duedate_changed' | 'comment_added';
+
+export interface TicketHistory {
+  id:        number;
+  ticketId:  number;
+  userId:    number;
+  action:    HistoryAction;
+  from?:     string;
+  to?:       string;
+  note?:     string;
+  createdAt: string;
+}
+
+// ─── Datos iniciales de comentarios e historial ───────────────────────────────
+export const TICKET_COMMENTS: TicketComment[] = [
+  { id:1, ticketId:1, userId:1, text:'Iniciando implementación. Usaremos jsonwebtoken + bcrypt.',                           createdAt:'2025-03-01T09:00:00' },
+  { id:2, ticketId:1, userId:2, text:'He configurado el middleware de verificación. Falta el refresh token.',               createdAt:'2025-03-02T11:30:00' },
+  { id:3, ticketId:3, userId:2, text:'Bloqueado por dependencia en el módulo de DB. Necesito acceso al servidor de staging.',createdAt:'2025-03-03T14:00:00' },
+  { id:4, ticketId:3, userId:1, text:'Acceso otorgado. Puedes continuar.',                                                  createdAt:'2025-03-03T15:45:00' },
+  { id:5, ticketId:7, userId:3, text:'Reproducido el error. El token JWT expira antes de lo esperado.',                    createdAt:'2025-03-01T10:00:00' },
+];
+
+export const TICKET_HISTORY: TicketHistory[] = [
+  { id:1,  ticketId:1, userId:1, action:'created',          to:'en_progreso',  note:'Ticket creado',                          createdAt:'2025-03-01T08:00:00' },
+  { id:2,  ticketId:1, userId:2, action:'status_changed',   from:'pendiente',  to:'en_progreso',                              createdAt:'2025-03-01T09:05:00' },
+  { id:3,  ticketId:1, userId:1, action:'assigned',         from:'superadmin', to:'ana_garcia',                               createdAt:'2025-03-01T09:10:00' },
+  { id:4,  ticketId:3, userId:2, action:'status_changed',   from:'en_progreso',to:'bloqueado',                                createdAt:'2025-03-03T14:01:00' },
+  { id:5,  ticketId:3, userId:1, action:'comment_added',    note:'Acceso otorgado',                                          createdAt:'2025-03-03T15:45:00' },
+  { id:6,  ticketId:7, userId:3, action:'status_changed',   from:'pendiente',  to:'en_progreso',                              createdAt:'2025-03-01T10:05:00' },
+  { id:7,  ticketId:7, userId:1, action:'priority_changed', from:'alta',       to:'critica',                                  createdAt:'2025-03-01T10:30:00' },
+  { id:8,  ticketId:4, userId:1, action:'status_changed',   from:'en_progreso',to:'hecho',       note:'Deploy exitoso v2.1', createdAt:'2025-03-04T18:00:00' },
+];
