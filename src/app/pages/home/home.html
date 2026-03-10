@@ -1,53 +1,227 @@
-<div class="home-wrapper">
+<p-toast position="top-right" />
 
-    <!-- Top bar -->
+<div class="dash">
+
+    <!-- ══ TOPBAR ════════════════════════════════════════════════════════════ -->
     <header class="topbar">
+
         <div class="topbar-left">
-            <h1>Dashboard</h1>
-            <p>Bienvenido de vuelta, <strong>{{ userName }}</strong></p>
-        </div>
-        <div class="topbar-right">
-            <div class="user-badge">
-                <i class="pi pi-user"></i>
-                <span>{{ userName }}</span>
+            <div class="group-orb" [style.background]="group()?.color">
+                <i class="pi pi-users"></i>
+            </div>
+            <div class="topbar-text">
+                <h1>{{ group()?.nombre ?? 'Dashboard' }}</h1>
+                <p>{{ group()?.descripcion }}</p>
             </div>
         </div>
+
+        <div class="topbar-right">
+            <div class="llm-pill" [style.background]="group()?.color">
+                <span class="llm-dot"></span>
+                <span>{{ group()?.model }}</span>
+            </div>
+
+            <ng-container *ifHasPermission="'ticket_add'">
+                <p-button label="Nuevo ticket" icon="pi pi-plus" styleClass="new-ticket-btn" (onClick)="openCreate()" />
+            </ng-container>
+        </div>
+
     </header>
 
-    <!-- Stats grid -->
-    <section class="stats-grid">
-        @for (stat of stats; track stat.label) {
-        <div class="stat-card">
-            <div class="stat-icon" [style.background]="stat.color + '1a'" [style.color]="stat.color">
-                <i class="pi" [ngClass]="stat.icon"></i>
+    <!-- ══ STAT STRIP ════════════════════════════════════════════════════════ -->
+    <section class="stat-strip">
+
+        <!-- Total -->
+        <button class="stat-pill stat-total" [class.active]="filter() === 'all'" (click)="filter.set('all')">
+            <span class="pill-num">{{ tickets().length }}</span>
+            <span class="pill-lbl">Total</span>
+        </button>
+
+        @for (c of columns; track c.status) {
+        <button class="stat-pill" [class.active]="filter() === c.status" [style.--accent]="c.accent"
+            [style.--glow]="c.glow" (click)="filter.set(c.status)">
+            <i class="pi" [ngClass]="c.icon" [style.color]="c.accent"></i>
+            <span class="pill-num" [style.color]="filter()===c.status ? c.accent : null">
+                {{ counts()[c.status] }}
+            </span>
+            <span class="pill-lbl">{{ c.label }}</span>
+        </button>
+        }
+
+    </section>
+
+    <!-- ══ KANBAN BOARD ═══════════════════════════════════════════════════════ -->
+    <section class="board">
+        @for (c of columns; track c.status) {
+        <div class="lane" [style.--accent]="c.accent" [style.--glow]="c.glow">
+
+            <!-- Lane header -->
+            <div class="lane-head">
+                <span class="lane-dot" [style.background]="c.accent"></span>
+                <span class="lane-title">{{ c.label }}</span>
+                <span class="lane-badge" [style.background]="c.glow" [style.color]="c.accent">
+                    {{ counts()[c.status] }}
+                </span>
             </div>
-            <div class="stat-info">
-                <span class="stat-value">{{ stat.value }}</span>
-                <span class="stat-label">{{ stat.label }}</span>
+
+            <!-- Cards -->
+            <div class="lane-body">
+
+                @for (t of colTickets(c.status); track t.id) {
+                <article class="tcard" [style.--accent]="c.accent">
+
+                    <div class="tcard-top">
+                        <span class="tcard-id">#{{ t.id }}</span>
+                        <span class="prio-badge" [style.color]="priorityColor(t.priority)"
+                            [style.border-color]="priorityColor(t.priority) + '40'"
+                            [style.background]="priorityColor(t.priority) + '18'">
+                            {{ t.priority }}
+                        </span>
+                    </div>
+
+                    <h3 class="tcard-title">{{ t.titulo }}</h3>
+                    <p class="tcard-desc">{{ t.descripcion }}</p>
+
+                    <div class="tcard-foot">
+                        <div class="tcard-assignee">
+                            <div class="avatar-xs">{{ assigneeName(t.assignedToId).charAt(0) }}</div>
+                            <span>{{ assigneeName(t.assignedToId) }}</span>
+                        </div>
+                        <span class="tcard-date">{{ t.createdAt }}</span>
+                    </div>
+
+                    <!-- Move / Edit / Delete actions -->
+                    <div class="tcard-actions">
+
+                        @if (prevStatus(c.status)) {
+                        <ng-container *ifHasPermission="'ticket_edit'">
+                            <button class="act-btn act-move" [pTooltip]="'← ' + col(prevStatus(c.status)!).label"
+                                tooltipPosition="top" (click)="moveStatus(t, prevStatus(c.status)!)">
+                                <i class="pi pi-arrow-left"></i>
+                            </button>
+                        </ng-container>
+                        }
+
+                        <ng-container *ifHasPermission="'ticket_edit'">
+                            <button class="act-btn act-edit" pTooltip="Editar" tooltipPosition="top"
+                                (click)="openEdit(t)">
+                                <i class="pi pi-pencil"></i>
+                            </button>
+                        </ng-container>
+
+                        <ng-container *ifHasPermission="'ticket_delete'">
+                            <button class="act-btn act-del" pTooltip="Eliminar" tooltipPosition="top"
+                                (click)="deleteTicket(t.id)">
+                                <i class="pi pi-trash"></i>
+                            </button>
+                        </ng-container>
+
+                        @if (nextStatus(c.status)) {
+                        <ng-container *ifHasPermission="'ticket_edit'">
+                            <button class="act-btn act-move" [pTooltip]="col(nextStatus(c.status)!).label + ' →'"
+                                tooltipPosition="top" (click)="moveStatus(t, nextStatus(c.status)!)">
+                                <i class="pi pi-arrow-right"></i>
+                            </button>
+                        </ng-container>
+                        }
+
+                    </div>
+
+                </article>
+                }
+
+                @if (colTickets(c.status).length === 0) {
+                <div class="lane-empty">
+                    <i class="pi pi-inbox"></i>
+                    <span>Sin tickets</span>
+                </div>
+                }
+
             </div>
         </div>
         }
     </section>
 
-    <!-- Recent activity -->
-    <section class="activity-section">
-        <div class="section-header">
+    <!-- ══ RECIENTES ══════════════════════════════════════════════════════════ -->
+    <section class="recents">
+        <div class="recents-head">
+            <i class="pi pi-history"></i>
             <h2>Actividad reciente</h2>
+            <span class="recents-sub">últimos {{ recentTickets().length }} tickets modificados</span>
         </div>
-        <div class="activity-list">
-            @for (item of recentActivity; track item.user) {
-            <div class="activity-item">
-                <div class="activity-icon">
-                    <i class="pi" [ngClass]="item.icon"></i>
+
+        <div class="recents-list">
+            @for (t of recentTickets(); track t.id) {
+            <div class="ritem">
+                <span class="ritem-id">#{{ t.id }}</span>
+                <div class="ritem-info">
+                    <span class="ritem-title">{{ t.titulo }}</span>
+                    <span class="ritem-who">{{ assigneeName(t.assignedToId) }}</span>
                 </div>
-                <div class="activity-info">
-                    <span class="activity-user">{{ item.user }}</span>
-                    <span class="activity-action">{{ item.action }}</span>
-                </div>
-                <span class="activity-time">{{ item.time }}</span>
+                <span class="ritem-status" [style.background]="col(t.status).glow" [style.color]="col(t.status).accent">
+                    <i class="pi" [ngClass]="col(t.status).icon"></i>
+                    {{ col(t.status).label }}
+                </span>
+                <span class="ritem-prio" [style.background]="priorityColor(t.priority) + '18'"
+                    [style.color]="priorityColor(t.priority)">
+                    {{ t.priority }}
+                </span>
             </div>
             }
         </div>
     </section>
 
 </div>
+
+<!-- ══ MODAL ══════════════════════════════════════════════════════════════════ -->
+<p-dialog [(visible)]="showModal" [modal]="true" [closable]="true" [draggable]="false" [style]="{ width: '520px' }"
+    styleClass="dark-dialog">
+
+    <ng-template pTemplate="header">
+        <span class="dlg-title">
+            <i class="pi" [ngClass]="isEditing() ? 'pi-pencil' : 'pi-plus-circle'"></i>
+            {{ isEditing() ? 'Editar ticket' : 'Nuevo ticket' }}
+        </span>
+    </ng-template>
+
+    <div class="dlg-body">
+
+        <div class="dlg-field">
+            <label>Título <span class="req">*</span></label>
+            <input pInputText [(ngModel)]="form.titulo" placeholder="¿Qué hay que resolver?" class="dlg-input" />
+        </div>
+
+        <div class="dlg-field">
+            <label>Descripción</label>
+            <textarea pTextarea [(ngModel)]="form.descripcion" placeholder="Detalla el contexto o pasos a seguir..."
+                rows="3" class="dlg-textarea"></textarea>
+        </div>
+
+        <div class="dlg-row">
+            <div class="dlg-field">
+                <label>Estado</label>
+                <p-select [(ngModel)]="form.status" [options]="statusOpts" optionLabel="label" optionValue="value"
+                    styleClass="dlg-select" />
+            </div>
+            <div class="dlg-field">
+                <label>Prioridad</label>
+                <p-select [(ngModel)]="form.priority" [options]="priorityOpts" optionLabel="label" optionValue="value"
+                    styleClass="dlg-select" />
+            </div>
+        </div>
+
+        <div class="dlg-field">
+            <label>Asignado a</label>
+            <p-select [(ngModel)]="form.assignedToId" [options]="memberOpts" optionLabel="label" optionValue="value"
+                styleClass="dlg-select" />
+        </div>
+
+    </div>
+
+    <ng-template pTemplate="footer">
+        <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="showModal.set(false)" />
+        <p-button [label]="isEditing() ? 'Guardar cambios' : 'Crear ticket'"
+            [icon]="isEditing() ? 'pi pi-check' : 'pi pi-plus'" [disabled]="formInvalid" (onClick)="save()" />
+    </ng-template>
+
+</p-dialog>

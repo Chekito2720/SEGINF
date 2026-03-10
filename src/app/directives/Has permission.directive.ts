@@ -1,6 +1,6 @@
 import { Directive, Input, OnInit, TemplateRef, ViewContainerRef } from '@angular/core';
 import { Permission } from '../models/Auth.model';
-import { PermissionsService } from './Permissions.service';
+import { PermissionsService } from '../Services/Permissions.service';
 
 @Directive({
   selector: '[ifHasPermission]',
