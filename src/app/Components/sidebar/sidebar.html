@@ -24,7 +24,7 @@
     <!-- Nav filtrado por permisos -->
     <nav class="sidebar-nav">
         @for (item of visibleItems; track item.route) {
-        <a [routerLink]="item.route" routerLinkActive="active" class="nav-item"
+        <a [routerLink]="item.route" class="nav-item" [class.active]="isActive(item)"
             [pTooltip]="collapsed() ? item.label : ''" tooltipPosition="right">
             <i class="pi" [ngClass]="item.icon"></i>
             @if (!collapsed()) { <span>{{ item.label }}</span> }

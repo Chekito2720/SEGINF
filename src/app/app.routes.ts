@@ -31,6 +31,8 @@ export const routes: Routes = [
     children: [
       { path: '',           loadComponent: () => import('./pages/home/home').then(m => m.HomeComponent) },
       { path: 'kanban',     loadComponent: () => import('./pages/kanban/kanban').then(m => m.KanbanComponent) },
+      { path: 'tickets',    loadComponent: () => import('./pages/ticket-list/ticket-list').then(m => m.TicketListComponent) },
+      { path: 'ticket/:id', loadComponent: () => import('./pages/ticket-detail/ticket-detail').then(m => m.TicketDetailComponent) },
       { path: 'rud',        loadComponent: () => import('./pages/rud/rud').then(m => m.RudComponent)        },
       { path: 'crud',       loadComponent: () => import('./pages/crud/crud').then(m => m.CrudComponent)     },
       { path: 'groups',     loadComponent: () => import('./pages/groups/groups').then(m => m.GroupsComponent) },

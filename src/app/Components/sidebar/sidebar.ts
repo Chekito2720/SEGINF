@@ -1,6 +1,6 @@
 import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
 import { DividerModule } from 'primeng/divider';
@@ -13,7 +13,9 @@ interface NavItem {
   label:       string;
   icon:        string;
   route:       string;
-  permission?: Permission;   // si se define, el item solo aparece si el usuario tiene ese permiso
+  permission?: Permission;
+  // rutas que también deben marcar este item como activo
+  activeFor?:  string[];
 }
 
 @Component({
@@ -27,27 +29,33 @@ export class SidebarComponent {
   collapsed = signal(false);
 
   navItems: NavItem[] = [
-    { label: 'Dashboard',  icon: 'pi-objects-column', route: '/home'                                     },
-    { label: 'Kanban',     icon: 'pi-table',          route: '/home/kanban', permission: 'tickets_view' },
-    { label: 'Mi Cuenta',  icon: 'pi-user',           route: '/home/rud',    permission: 'user_view'    },
-    { label: 'Grupos',     icon: 'pi-users',          route: '/home/crud',   permission: 'groups_view'  },
-    { label: 'Tickets',    icon: 'pi-ticket',         route: '/home/groups', permission: 'tickets_view' },
-    { label: 'Usuarios',   icon: 'pi-id-card',        route: '/home/user',   permission: 'users_view'   },
+    { label: 'Dashboard', icon: 'pi-objects-column', route: '/home'                                                              },
+    { label: 'Kanban',    icon: 'pi-table',          route: '/home/kanban',  permission: 'tickets_view', activeFor: ['/home/ticket'] },
+    { label: 'Tickets',   icon: 'pi-list',           route: '/home/tickets', permission: 'tickets_view' },
+    { label: 'Mi Cuenta', icon: 'pi-user',           route: '/home/rud',   permission: 'user_view'                               },
+    { label: 'Grupos',    icon: 'pi-users',          route: '/home/crud',  permission: 'groups_view'                             },
+    { label: 'Usuarios',  icon: 'pi-id-card',        route: '/home/user',  permission: 'users_view'                              },
   ];
 
   constructor(
     public authSvc:  AuthService,
     public permsSvc: PermissionsService,
+    private router:  Router,
   ) {}
 
-  // Filtra los items según permisos del usuario actual
   get visibleItems(): NavItem[] {
     return this.navItems.filter(item =>
       !item.permission || this.permsSvc.hasPermission(item.permission)
     );
   }
 
-  toggle() { this.collapsed.set(!this.collapsed()); }
+  /** Marca el item activo también cuando la URL empieza por alguna ruta en activeFor */
+  isActive(item: NavItem): boolean {
+    const url = this.router.url;
+    if (url === item.route || url.startsWith(item.route + '/')) return true;
+    return item.activeFor?.some(prefix => url.startsWith(prefix)) ?? false;
+  }
 
-  logout() { this.authSvc.logout(); }
+  toggle() { this.collapsed.set(!this.collapsed()); }
+  logout()  { this.authSvc.logout(); }
 }
