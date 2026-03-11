@@ -32,8 +32,8 @@ export class SidebarComponent {
     { label: 'Dashboard', icon: 'pi-objects-column', route: '/home'                                                              },
     { label: 'Kanban',    icon: 'pi-table',          route: '/home/kanban',  permission: 'tickets_view', activeFor: ['/home/ticket'] },
     { label: 'Tickets',   icon: 'pi-list',           route: '/home/tickets', permission: 'tickets_view' },
-    { label: 'Mi Cuenta', icon: 'pi-user',           route: '/home/rud',   permission: 'user_view'                               },
-    { label: 'Grupos',    icon: 'pi-users',          route: '/home/crud',  permission: 'groups_view'                             },
+    { label: 'Mi Cuenta', icon: 'pi-user',           route: '/home/profile', permission: 'user_view', activeFor: ['/home/profile'] },
+    { label: 'Grupos',    icon: 'pi-users',          route: '/home/groups', permission: 'groups_view'                            },
     { label: 'Usuarios',  icon: 'pi-id-card',        route: '/home/user',  permission: 'users_view'                              },
   ];
 

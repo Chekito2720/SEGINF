@@ -1,27 +1,296 @@
-<div class="page-wrapper">
+<p-toast position="top-right" />
 
-    <header class="page-header">
-        <h1>Grupos</h1>
-        <p>Gestión de grupos del sistema</p>
+<div class="gm-wrap">
+
+    <!-- ══ HEADER ══════════════════════════════════════════════════════ -->
+    <header class="gm-header">
+        <div class="gm-title-block">
+            <h1 class="gm-title">Gestión de grupos</h1>
+            <span class="gm-subtitle">{{ groups().length }} grupos disponibles</span>
+        </div>
+        @if (can('group_add')) {
+        <button class="gm-btn accent" (click)="openCreate()">
+            <i class="pi pi-plus"></i> Nuevo grupo
+        </button>
+        }
     </header>
 
-    <!-- Total section -->
-    <div class="total-section">
-        <h2 class="section-title">Total</h2>
+    <div class="gm-layout">
 
-        <div class="total-badge">
-            {{ total }}
+        <!-- ── LISTA DE GRUPOS ──────────────────────────────────────────── -->
+        <aside class="gm-sidebar">
+            @for (g of groups(); track g.id) {
+            <div class="gm-group-item" [class.active]="selected()?.id === g.id" (click)="selectGroup(g)">
+                <div class="gm-group-dot" [style.background]="g.color"></div>
+                <div class="gm-group-meta">
+                    <span class="gm-group-name">{{ g.nombre }}</span>
+                    <span class="gm-group-info">{{ g.members.length }} miembros · {{ ticketCount(g.id) }} tickets</span>
+                </div>
+                <i class="pi pi-chevron-right gm-arrow"></i>
+            </div>
+            }
+            @if (groups().length === 0) {
+            <div class="gm-empty-side">Sin grupos</div>
+            }
+        </aside>
+
+        <!-- ── DETALLE DEL GRUPO ─────────────────────────────────────────── -->
+        @if (selected(); as g) {
+        <div class="gm-detail">
+
+            <!-- Config header -->
+            <div class="gm-detail-header">
+                <div class="gm-group-avatar" [style.background]="g.color">
+                    {{ g.nombre.charAt(0).toUpperCase() }}
+                </div>
+                <div class="gm-group-titles">
+                    <h2 class="gm-group-title">{{ g.nombre }}</h2>
+                    <p class="gm-group-desc">{{ g.descripcion || 'Sin descripción.' }}</p>
+                    <div class="gm-group-badges">
+                        <span class="gm-badge">{{ g.nivel }}</span>
+                        <span class="gm-badge model">{{ g.model }}</span>
+                        <span class="gm-badge">{{ g.autor }}</span>
+                    </div>
+                </div>
+                <div class="gm-detail-actions">
+                    @if (can('group_edit')) {
+                    <button class="gm-icon-btn" (click)="openEdit(g)" pTooltip="Editar grupo" tooltipPosition="top">
+                        <i class="pi pi-pencil"></i>
+                    </button>
+                    }
+                    @if (can('group_delete')) {
+                    <button class="gm-icon-btn danger" (click)="confirmDelete(g)" pTooltip="Eliminar grupo"
+                        tooltipPosition="top">
+                        <i class="pi pi-trash"></i>
+                    </button>
+                    }
+                </div>
+            </div>
+
+            <!-- Stats -->
+            <div class="gm-stats">
+                <div class="gm-stat">
+                    <span class="gm-stat-num">{{ g.members.length }}</span>
+                    <span class="gm-stat-lbl">Miembros</span>
+                </div>
+                <div class="gm-stat">
+                    <span class="gm-stat-num">{{ ticketCount(g.id) }}</span>
+                    <span class="gm-stat-lbl">Tickets</span>
+                </div>
+                <div class="gm-stat">
+                    <span class="gm-stat-num" [style.color]="g.color" style="filter:brightness(1.6)">●</span>
+                    <span class="gm-stat-lbl">{{ g.nivel }}</span>
+                </div>
+            </div>
+
+            <div class="gm-divider"></div>
+
+            <!-- ── MIEMBROS ─────────────────────────────────────────────── -->
+            <div class="gm-section">
+                <div class="gm-section-head">
+                    <i class="pi pi-users"></i>
+                    <span>Miembros</span>
+                    <span class="gm-count">{{ g.members.length }}</span>
+                    @if (can('group_add')) {
+                    <button class="gm-add-btn" (click)="openAddMember()">
+                        <i class="pi pi-user-plus"></i> Añadir
+                    </button>
+                    }
+                </div>
+
+                <div class="gm-members-list">
+                    @for (u of g.members; track u.id) {
+                    <div class="gm-member-row">
+                        <div class="gm-member-avatar" [style.background]="userColor(u.id)">
+                            {{ u.fullName.charAt(0).toUpperCase() }}
+                        </div>
+                        <div class="gm-member-info" (click)="openProfile(u.id)">
+                            <span class="gm-member-name">{{ u.fullName }}</span>
+                            <span class="gm-member-email">{{ u.email }}</span>
+                        </div>
+                        <span class="gm-member-perms">{{ u.permissions.length }} permisos</span>
+                        @if (can('group_delete')) {
+                        <button class="gm-remove-btn" pTooltip="Eliminar del grupo" tooltipPosition="left"
+                            (click)="confirmRemove(u)">
+                            <i class="pi pi-times"></i>
+                        </button>
+                        }
+                    </div>
+                    }
+                    @if (g.members.length === 0) {
+                    <div class="gm-members-empty">
+                        <i class="pi pi-user-minus"></i>
+                        <span>Sin miembros en este grupo</span>
+                    </div>
+                    }
+                </div>
+            </div>
+
         </div>
-    </div>
-
-    <!-- Advance subtitle + empty card -->
-    <div class="advance-section">
-        <h3 class="advance-title">Advance</h3>
-
-        <div class="empty-card">
-            <i class="pi pi-inbox empty-icon"></i>
-            <p>Sin contenido aún</p>
+        } @else {
+        <div class="gm-no-selection">
+            <i class="pi pi-users"></i>
+            <span>Selecciona un grupo</span>
         </div>
-    </div>
+        }
 
+    </div><!-- /gm-layout -->
 </div>
+
+<!-- ══ MODAL: Crear grupo ══════════════════════════════════════════ -->
+<p-dialog header="Nuevo grupo" [(visible)]="showCreateGroup" [modal]="true" [closable]="true" styleClass="gm-dialog">
+    <div class="gm-form">
+        <div class="gm-form-field">
+            <label>Nombre *</label>
+            <input pInputText [(ngModel)]="groupForm.nombre" placeholder="Ej. Equipo Backend" class="gm-input" />
+        </div>
+        <div class="gm-form-field">
+            <label>Descripción</label>
+            <textarea pTextarea [(ngModel)]="groupForm.descripcion" rows="3" placeholder="¿Qué hace este grupo?"
+                class="gm-input"></textarea>
+        </div>
+        <div class="gm-form-row">
+            <div class="gm-form-field">
+                <label>Nivel</label>
+                <div class="gm-select-wrap">
+                    <select class="gm-select" [(ngModel)]="groupForm.nivel">
+                        @for (n of nivelOptions; track n) { <option [value]="n">{{ n }}</option> }
+                    </select>
+                </div>
+            </div>
+            <div class="gm-form-field">
+                <label>Modelo LLM</label>
+                <div class="gm-select-wrap">
+                    <select class="gm-select" [(ngModel)]="groupForm.model">
+                        @for (m of modelOptions; track m) { <option [value]="m">{{ m }}</option> }
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="gm-form-field">
+            <label>Color</label>
+            <div class="gm-color-grid">
+                @for (c of colorOptions; track c) {
+                <button class="gm-color-swatch" [style.background]="c" [class.selected]="groupForm.color === c"
+                    (click)="groupForm.color = c">
+                </button>
+                }
+            </div>
+        </div>
+    </div>
+    <ng-template pTemplate="footer">
+        <button class="gm-btn" (click)="showCreateGroup.set(false)">Cancelar</button>
+        <button class="gm-btn accent" [disabled]="!groupForm.nombre.trim()" (click)="saveCreate()">
+            <i class="pi pi-check"></i> Crear
+        </button>
+    </ng-template>
+</p-dialog>
+
+<!-- ══ MODAL: Editar grupo ═════════════════════════════════════════ -->
+<p-dialog header="Editar grupo" [(visible)]="showEditGroup" [modal]="true" [closable]="true" styleClass="gm-dialog">
+    <div class="gm-form">
+        <div class="gm-form-field">
+            <label>Nombre *</label>
+            <input pInputText [(ngModel)]="groupForm.nombre" class="gm-input" />
+        </div>
+        <div class="gm-form-field">
+            <label>Descripción</label>
+            <textarea pTextarea [(ngModel)]="groupForm.descripcion" rows="3" class="gm-input"></textarea>
+        </div>
+        <div class="gm-form-row">
+            <div class="gm-form-field">
+                <label>Nivel</label>
+                <div class="gm-select-wrap">
+                    <select class="gm-select" [(ngModel)]="groupForm.nivel">
+                        @for (n of nivelOptions; track n) { <option [value]="n">{{ n }}</option> }
+                    </select>
+                </div>
+            </div>
+            <div class="gm-form-field">
+                <label>Modelo LLM</label>
+                <div class="gm-select-wrap">
+                    <select class="gm-select" [(ngModel)]="groupForm.model">
+                        @for (m of modelOptions; track m) { <option [value]="m">{{ m }}</option> }
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="gm-form-field">
+            <label>Color</label>
+            <div class="gm-color-grid">
+                @for (c of colorOptions; track c) {
+                <button class="gm-color-swatch" [style.background]="c" [class.selected]="groupForm.color === c"
+                    (click)="groupForm.color = c">
+                </button>
+                }
+            </div>
+        </div>
+    </div>
+    <ng-template pTemplate="footer">
+        <button class="gm-btn" (click)="showEditGroup.set(false)">Cancelar</button>
+        <button class="gm-btn accent" [disabled]="!groupForm.nombre.trim()" (click)="saveEdit()">
+            <i class="pi pi-check"></i> Guardar
+        </button>
+    </ng-template>
+</p-dialog>
+
+<!-- ══ MODAL: Eliminar grupo ═══════════════════════════════════════ -->
+<p-dialog header="Eliminar grupo" [(visible)]="showDeleteConfirm" [modal]="true" [closable]="true"
+    styleClass="gm-dialog sm">
+    <div class="gm-confirm-body">
+        <i class="pi pi-exclamation-triangle gm-warn-icon"></i>
+        <p>¿Eliminar el grupo <strong>{{ selected()?.nombre }}</strong>?</p>
+        <p class="gm-confirm-sub">Esta acción no se puede deshacer.</p>
+    </div>
+    <ng-template pTemplate="footer">
+        <button class="gm-btn" (click)="showDeleteConfirm.set(false)">Cancelar</button>
+        <button class="gm-btn danger" (click)="executeDelete()">
+            <i class="pi pi-trash"></i> Eliminar
+        </button>
+    </ng-template>
+</p-dialog>
+
+<!-- ══ MODAL: Añadir miembro ══════════════════════════════════════ -->
+<p-dialog header="Añadir miembro" [(visible)]="showAddMember" [modal]="true" [closable]="true"
+    styleClass="gm-dialog sm">
+    <div class="gm-form">
+        <div class="gm-form-field">
+            <label>Correo del usuario</label>
+            <input pInputText [(ngModel)]="addMemberEmail" placeholder="usuario@correo.com" class="gm-input"
+                (input)="addMemberError = ''" (keydown.enter)="saveAddMember()" />
+            @if (addMemberError) {
+            <span class="gm-field-error">
+                <i class="pi pi-exclamation-circle"></i> {{ addMemberError }}
+            </span>
+            }
+            <span class="gm-field-hint">
+                Usuarios disponibles:
+                @for (u of []; track u) {}
+                ana&#64;miapp.com · admin&#64;miapp.com · carlos&#64;miapp.com
+            </span>
+        </div>
+    </div>
+    <ng-template pTemplate="footer">
+        <button class="gm-btn" (click)="showAddMember.set(false)">Cancelar</button>
+        <button class="gm-btn accent" [disabled]="!addMemberEmail.trim()" (click)="saveAddMember()">
+            <i class="pi pi-user-plus"></i> Añadir
+        </button>
+    </ng-template>
+</p-dialog>
+
+<!-- ══ MODAL: Eliminar miembro ════════════════════════════════════ -->
+<p-dialog header="Eliminar miembro" [(visible)]="showRemoveConfirm" [modal]="true" [closable]="true"
+    styleClass="gm-dialog sm">
+    <div class="gm-confirm-body">
+        <i class="pi pi-user-minus gm-warn-icon"></i>
+        <p>¿Eliminar a <strong>{{ memberToRemove()?.fullName }}</strong> del grupo <strong>{{ selected()?.nombre
+                }}</strong>?</p>
+        <p class="gm-confirm-sub">El usuario perderá acceso a los tickets del grupo.</p>
+    </div>
+    <ng-template pTemplate="footer">
+        <button class="gm-btn" (click)="showRemoveConfirm.set(false)">Cancelar</button>
+        <button class="gm-btn danger" (click)="executeRemove()">
+            <i class="pi pi-times"></i> Eliminar
+        </button>
+    </ng-template>
+</p-dialog>
