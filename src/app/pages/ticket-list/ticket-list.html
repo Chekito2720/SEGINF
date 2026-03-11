@@ -14,7 +14,6 @@
     <!-- ══ TOOLBAR ══════════════════════════════════════════════════════ -->
     <div class="tl-toolbar">
 
-        <!-- Búsqueda -->
         <div class="tl-search-wrap">
             <i class="pi pi-search tl-search-icon"></i>
             <input class="tl-search" type="text" placeholder="Buscar por título o #ID…" [value]="search()"
@@ -26,14 +25,13 @@
             }
         </div>
 
-        <!-- Filtros -->
         <div class="tl-filters">
             <p-select [options]="statusOptions" [ngModel]="filterStatus()" (ngModelChange)="onStatus($event)"
-                optionLabel="label" optionValue="value" styleClass="tl-select" placeholder="Estado" />
+                optionLabel="label" optionValue="value" placeholder="Estado" />
             <p-select [options]="priorityOptions" [ngModel]="filterPriority()" (ngModelChange)="onPriority($event)"
-                optionLabel="label" optionValue="value" styleClass="tl-select" placeholder="Prioridad" />
+                optionLabel="label" optionValue="value" placeholder="Prioridad" />
             <p-select [options]="memberOptions()" [ngModel]="filterAssignee()" (ngModelChange)="onAssignee($event)"
-                optionLabel="label" optionValue="value" styleClass="tl-select" placeholder="Asignado" />
+                optionLabel="label" optionValue="value" placeholder="Asignado" />
             @if (hasActiveFilters) {
             <button class="tl-clear-btn" (click)="clearFilters()">
                 <i class="pi pi-filter-slash"></i>
@@ -42,12 +40,14 @@
             }
         </div>
 
-        <!-- Page size -->
         <div class="tl-pagesize">
             <p-select [options]="pageSizeOptions" [ngModel]="pageSize()" (ngModelChange)="onPageSize($event)"
-                optionLabel="label" optionValue="value" styleClass="tl-select sm" />
+                optionLabel="label" optionValue="value" />
         </div>
     </div>
+
+    <!-- ══ QUICK FILTERS ═══════════════════════════════════════════════ -->
+    <app-quick-filters [counts]="quickFilterCounts()" (filterChange)="onQuickFilter($event)" />
 
     <!-- ══ TABLA ════════════════════════════════════════════════════════ -->
     <div class="tl-table-wrap">
@@ -55,37 +55,29 @@
             <thead>
                 <tr>
                     <th class="col-id sortable" (click)="sort('id')">
-                        <span>#ID</span>
-                        <i class="pi sort-icon" [ngClass]="sortIcon('id')"></i>
+                        <span>#ID</span><i class="pi sort-icon" [ngClass]="sortIcon('id')"></i>
                     </th>
                     <th class="col-titulo sortable" (click)="sort('titulo')">
-                        <span>Título</span>
-                        <i class="pi sort-icon" [ngClass]="sortIcon('titulo')"></i>
+                        <span>Título</span><i class="pi sort-icon" [ngClass]="sortIcon('titulo')"></i>
                     </th>
                     <th class="col-status sortable" (click)="sort('status')">
-                        <span>Estado</span>
-                        <i class="pi sort-icon" [ngClass]="sortIcon('status')"></i>
+                        <span>Estado</span><i class="pi sort-icon" [ngClass]="sortIcon('status')"></i>
                     </th>
                     <th class="col-priority sortable" (click)="sort('priority')">
-                        <span>Prioridad</span>
-                        <i class="pi sort-icon" [ngClass]="sortIcon('priority')"></i>
+                        <span>Prioridad</span><i class="pi sort-icon" [ngClass]="sortIcon('priority')"></i>
                     </th>
                     <th class="col-assignee sortable" (click)="sort('assignedToId')">
-                        <span>Asignado a</span>
-                        <i class="pi sort-icon" [ngClass]="sortIcon('assignedToId')"></i>
+                        <span>Asignado a</span><i class="pi sort-icon" [ngClass]="sortIcon('assignedToId')"></i>
                     </th>
                     <th class="col-due sortable" (click)="sort('dueDate')">
-                        <span>Fecha límite</span>
-                        <i class="pi sort-icon" [ngClass]="sortIcon('dueDate')"></i>
+                        <span>Fecha límite</span><i class="pi sort-icon" [ngClass]="sortIcon('dueDate')"></i>
                     </th>
                     <th class="col-created sortable" (click)="sort('createdAt')">
-                        <span>Creado</span>
-                        <i class="pi sort-icon" [ngClass]="sortIcon('createdAt')"></i>
+                        <span>Creado</span><i class="pi sort-icon" [ngClass]="sortIcon('createdAt')"></i>
                     </th>
                     <th class="col-actions"></th>
                 </tr>
             </thead>
-
             <tbody>
                 @if (page().length === 0) {
                 <tr class="tl-empty-row">
@@ -100,75 +92,45 @@
                     </td>
                 </tr>
                 }
-
                 @for (t of page(); track t.id) {
                 <tr class="tl-row" [class.overdue]="isOverdue(t.dueDate, t.status)" (click)="openDetail(t)">
-
-                    <!-- ID -->
-                    <td class="col-id">
-                        <span class="ticket-id">#{{ t.id }}</span>
-                    </td>
-
-                    <!-- Título -->
-                    <td class="col-titulo">
-                        <span class="ticket-title">{{ t.titulo }}</span>
-                    </td>
-
-                    <!-- Estado -->
+                    <td class="col-id"><span class="ticket-id">#{{ t.id }}</span></td>
+                    <td class="col-titulo"><span class="ticket-title">{{ t.titulo }}</span></td>
                     <td class="col-status">
                         <span class="chip" [style.color]="statusMeta(t.status).color"
                             [style.background]="statusMeta(t.status).bg">
-                            <i class="pi" [ngClass]="statusMeta(t.status).icon"></i>
-                            {{ statusMeta(t.status).label }}
+                            <i class="pi" [ngClass]="statusMeta(t.status).icon"></i>{{ statusMeta(t.status).label }}
                         </span>
                     </td>
-
-                    <!-- Prioridad -->
                     <td class="col-priority">
                         <span class="chip" [style.color]="priorityMeta(t.priority).color"
                             [style.background]="priorityMeta(t.priority).bg">
-                            <i class="pi" [ngClass]="priorityMeta(t.priority).icon"></i>
-                            {{ priorityMeta(t.priority).label }}
+                            <i class="pi" [ngClass]="priorityMeta(t.priority).icon"></i>{{
+                            priorityMeta(t.priority).label }}
                         </span>
                     </td>
-
-                    <!-- Asignado -->
                     <td class="col-assignee">
                         <div class="assignee-cell">
-                            <div class="mini-avatar" [style.background]="userColor(t.assignedToId)">
-                                {{ userInitial(t.assignedToId) }}
-                            </div>
+                            <div class="mini-avatar" [style.background]="userColor(t.assignedToId)">{{
+                                userInitial(t.assignedToId) }}</div>
                             <span>{{ userName(t.assignedToId) }}</span>
                         </div>
                     </td>
-
-                    <!-- Fecha límite -->
                     <td class="col-due">
                         @if (t.dueDate) {
                         <span class="due-date" [class.overdue-text]="isOverdue(t.dueDate, t.status)">
-                            @if (isOverdue(t.dueDate, t.status)) {
-                            <i class="pi pi-exclamation-triangle"></i>
-                            }
+                            @if (isOverdue(t.dueDate, t.status)) { <i class="pi pi-exclamation-triangle"></i> }
                             {{ formatDate(t.dueDate) }}
                         </span>
-                        } @else {
-                        <span class="no-date">—</span>
-                        }
+                        } @else { <span class="no-date">—</span> }
                     </td>
-
-                    <!-- Creado -->
-                    <td class="col-created">
-                        <span class="created-date">{{ formatDate(t.createdAt) }}</span>
-                    </td>
-
-                    <!-- Acción -->
+                    <td class="col-created"><span class="created-date">{{ formatDate(t.createdAt) }}</span></td>
                     <td class="col-actions" (click)="$event.stopPropagation()">
                         <button class="row-action-btn" pTooltip="Ver detalle" tooltipPosition="left"
                             (click)="openDetail(t)">
                             <i class="pi pi-arrow-right"></i>
                         </button>
                     </td>
-
                 </tr>
                 }
             </tbody>
@@ -181,17 +143,13 @@
         <button class="page-btn nav" [disabled]="currentPage() === 1" (click)="prevPage()">
             <i class="pi pi-chevron-left"></i>
         </button>
-
         @for (p of pages(); track $index) {
         @if (p === '…') {
         <span class="page-ellipsis">…</span>
         } @else {
-        <button class="page-btn" [class.active]="currentPage() === p" (click)="goToPage(p)">
-            {{ p }}
-        </button>
+        <button class="page-btn" [class.active]="currentPage() === p" (click)="goToPage(p)">{{ p }}</button>
         }
         }
-
         <button class="page-btn nav" [disabled]="currentPage() === totalPages()" (click)="nextPage()">
             <i class="pi pi-chevron-right"></i>
         </button>

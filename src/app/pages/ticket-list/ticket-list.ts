@@ -14,6 +14,8 @@ import { PermissionsService } from '../../Services/Permissions.service';
 import {
   Ticket, TicketStatus, TicketPriority, USERS,
 } from '../../models/Auth.model';
+import { QuickFiltersComponent } from '../../Components/quick-filters/quick-filters';
+import { QuickFilterId }         from '../../Components/quick-filters/quick-filter.model';
 
 export type SortField = 'id' | 'titulo' | 'status' | 'priority' | 'assignedToId' | 'dueDate' | 'createdAt';
 export type SortDir   = 'asc' | 'desc';
@@ -32,6 +34,7 @@ const STATUS_RANK: Record<TicketStatus, number> = {
   imports: [
     CommonModule, FormsModule,
     ButtonModule, InputTextModule, SelectModule, TooltipModule, ToastModule,
+    QuickFiltersComponent,
   ],
   providers: [MessageService],
   templateUrl: './ticket-list.html',
@@ -44,6 +47,7 @@ export class TicketListComponent implements OnInit {
   filterStatus   = signal<TicketStatus | ''>('');
   filterPriority = signal<TicketPriority | ''>('');
   filterAssignee = signal<number | 0>(0);
+  quickFilter    = signal<QuickFilterId>('none');
 
   // ── Ordenamiento ───────────────────────────────────────────────────
   sortField = signal<SortField>('id');
@@ -114,15 +118,37 @@ export class TicketListComponent implements OnInit {
     const st = this.filterStatus();
     const pr = this.filterPriority();
     const as = this.filterAssignee();
+    const me = this.authSvc.getUser();
+    const qf = this.quickFilter();
 
     return this.rawTickets().filter(t => {
       if (q  && !t.titulo.toLowerCase().includes(q) && !String(t.id).includes(q)) return false;
       if (st && t.status   !== st) return false;
       if (pr && t.priority !== pr) return false;
       if (as && t.assignedToId !== as) return false;
+      // Quick filter
+      if (qf === 'mis_tickets'    && t.assignedToId !== me?.id) return false;
+      if (qf === 'sin_asignar'    && t.assignedToId !== 0) return false;
+      if (qf === 'prioridad_alta' && t.priority !== 'alta' && t.priority !== 'critica') return false;
+      if (qf === 'vencidos'       && !(t.dueDate && t.status !== 'hecho' && new Date(t.dueDate) < new Date())) return false;
+      if (qf === 'bloqueados'     && t.status !== 'bloqueado') return false;
       return true;
     });
   });
+
+  quickFilterCounts(): Partial<Record<QuickFilterId, number>> {
+    const all = this.rawTickets();
+    const me  = this.authSvc.getUser();
+    return {
+      mis_tickets:    all.filter(t => t.assignedToId === me?.id).length,
+      sin_asignar:    all.filter(t => t.assignedToId === 0).length,
+      prioridad_alta: all.filter(t => t.priority === 'alta' || t.priority === 'critica').length,
+      vencidos:       all.filter(t => t.dueDate && t.status !== 'hecho' && new Date(t.dueDate) < new Date()).length,
+      bloqueados:     all.filter(t => t.status === 'bloqueado').length,
+    };
+  }
+
+  onQuickFilter(id: any) { this.quickFilter.set(id as QuickFilterId); this.currentPage.set(1); }
 
   sorted = computed(() => {
     const field = this.sortField();
@@ -191,11 +217,12 @@ export class TicketListComponent implements OnInit {
     this.filterStatus.set('');
     this.filterPriority.set('');
     this.filterAssignee.set(0);
+    this.quickFilter.set('none');
     this.currentPage.set(1);
   }
 
   get hasActiveFilters(): boolean {
-    return !!(this.search() || this.filterStatus() || this.filterPriority() || this.filterAssignee());
+    return !!(this.search() || this.filterStatus() || this.filterPriority() || this.filterAssignee() || this.quickFilter() !== 'none');
   }
 
   // ── Navegación ─────────────────────────────────────────────────────

@@ -2,6 +2,7 @@ import {
   Component, OnInit, signal, computed, ChangeDetectorRef
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule }     from 'primeng/button';
 import { DialogModule }     from 'primeng/dialog';
@@ -19,6 +20,8 @@ import { HasPermissionDirective } from '../../directives/Has permission.directiv
 import {
   Ticket, TicketStatus, TicketPriority, AppGroup, USERS
 } from '../../models/Auth.model';
+import { QuickFiltersComponent } from '../../Components/quick-filters/quick-filters';
+import { QuickFilterId }         from '../../Components/quick-filters/quick-filter.model';
 
 export interface TicketForm {
   titulo:       string;
@@ -48,6 +51,7 @@ export interface KanbanColumn {
     ButtonModule, DialogModule, InputTextModule, TextareaModule,
     SelectModule, ToastModule, TooltipModule, TagModule,
     HasPermissionDirective,
+    QuickFiltersComponent,
   ],
   providers: [MessageService],
   templateUrl: './kanban.html',
@@ -56,7 +60,8 @@ export interface KanbanColumn {
 export class KanbanComponent implements OnInit {
 
   group   = signal<AppGroup | null>(null);
-  tickets = signal<Ticket[]>([]);
+  tickets      = signal<Ticket[]>([]);
+  quickFilter  = signal<QuickFilterId>('none');
 
   // ── Drag state ──────────────────────────────────────────────────────────
   draggingId = signal<number | null>(null);
@@ -95,6 +100,7 @@ export class KanbanComponent implements OnInit {
     private ticketSvc: TicketService,
     private msgSvc:    MessageService,
     private cdr:       ChangeDetectorRef,
+    private router:    Router,
   ) {}
 
   ngOnInit() {
@@ -113,8 +119,34 @@ export class KanbanComponent implements OnInit {
   }
 
   colTickets(status: TicketStatus): Ticket[] {
-    return this.tickets().filter(t => t.status === status);
+    return this.applyQuickFilter(this.tickets()).filter(t => t.status === status);
   }
+
+  applyQuickFilter(list: Ticket[]): Ticket[] {
+    const me = this.authSvc.getUser();
+    switch (this.quickFilter()) {
+      case 'mis_tickets':    return list.filter(t => t.assignedToId === me?.id);
+      case 'sin_asignar':    return list.filter(t => t.assignedToId === 0);
+      case 'prioridad_alta': return list.filter(t => t.priority === 'alta' || t.priority === 'critica');
+      case 'vencidos':       return list.filter(t => t.dueDate && t.status !== 'hecho' && new Date(t.dueDate) < new Date());
+      case 'bloqueados':     return list.filter(t => t.status === 'bloqueado');
+      default:               return list;
+    }
+  }
+
+  quickFilterCounts(): Partial<Record<QuickFilterId, number>> {
+    const all = this.tickets();
+    const me  = this.authSvc.getUser();
+    return {
+      mis_tickets:    all.filter(t => t.assignedToId === me?.id).length,
+      sin_asignar:    all.filter(t => t.assignedToId === 0).length,
+      prioridad_alta: all.filter(t => t.priority === 'alta' || t.priority === 'critica').length,
+      vencidos:       all.filter(t => t.dueDate && t.status !== 'hecho' && new Date(t.dueDate) < new Date()).length,
+      bloqueados:     all.filter(t => t.status === 'bloqueado').length,
+    };
+  }
+
+  onQuickFilter(id: any) { this.quickFilter.set(id as QuickFilterId); }
 
   col(status: TicketStatus): KanbanColumn {
     return this.columns.find(c => c.status === status)!;
@@ -176,11 +208,9 @@ export class KanbanComponent implements OnInit {
     });
   }
 
-  // ── Detail modal ───────────────────────────────────────────────────────
+  // ── Navigate to detail page ─────────────────────────────────────────────
   openDetail(ticket: Ticket) {
-    this.selected.set({ ...ticket });
-    this.editMode.set(false);
-    this.showDetail.set(true);
+    this.router.navigate(['/home/ticket', ticket.id]);
   }
 
   enterEditMode() {

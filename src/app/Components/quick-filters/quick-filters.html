@@ -1,0 +1,22 @@
+
+<div class="qf-bar">
+
+    <span class="qf-label">Filtros rápidos</span>
+
+    @for (f of filters; track f.id) {
+    <button class="qf-chip" [class.active]="active() === f.id" [style.--qf-color]="f.color" (click)="toggle(f.id)">
+        <i class="pi" [ngClass]="f.icon"></i>
+        <span>{{ f.label }}</span>
+        @if (countFor(f.id) !== null) {
+        <span class="qf-count">{{ countFor(f.id) }}</span>
+        }
+    </button>
+    }
+
+    @if (hasActive) {
+    <button class="qf-clear" (click)="clear()">
+        <i class="pi pi-times"></i>
+    </button>
+    }
+
+</div>

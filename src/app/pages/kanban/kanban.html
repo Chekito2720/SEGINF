@@ -19,6 +19,9 @@
         </ng-container>
     </header>
 
+    <!-- ══ QUICK FILTERS ══════════════════════════════════════════════════ -->
+    <app-quick-filters [counts]="quickFilterCounts()" (filterChange)="onQuickFilter($event)" />
+
     <!-- ══ BOARD ════════════════════════════════════════════════════════════ -->
     <div class="kb-board">
 
