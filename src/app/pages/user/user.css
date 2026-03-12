@@ -14,7 +14,7 @@
 }
 
 .usr-title {
-    font-family: 'Playfair Display', serif;
+    font-family: 'DM Sans', sans-serif;
     font-size: 1.6rem;
     color: #f0f0ff;
     margin: 0;
@@ -76,7 +76,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-family: 'Playfair Display', serif;
+    font-family: 'DM Sans', sans-serif;
     font-size: 1.1rem;
     font-weight: 700;
     color: #fff;

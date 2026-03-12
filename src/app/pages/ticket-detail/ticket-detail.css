@@ -93,7 +93,7 @@
 }
 
 .td-title {
-    font-family: 'Playfair Display', serif;
+    font-family: 'DM Sans', sans-serif;
     font-size: 1.75rem;
     color: #f0f0ff;
     line-height: 1.2;
@@ -778,7 +778,7 @@ input[type="date"].date-input::-webkit-calendar-picker-indicator {
 }
 
 .td-not-found h2 {
-    font-family: 'Playfair Display', serif;
+    font-family: 'DM Sans', sans-serif;
     color: #9a9cc0;
     font-size: 1.4rem;
 }

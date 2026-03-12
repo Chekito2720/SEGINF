@@ -7,15 +7,15 @@ import { DividerModule } from 'primeng/divider';
 import { TagModule } from 'primeng/tag';
 import { AuthService } from '../../Services/Auth.service';
 import { PermissionsService } from '../../Services/Permissions.service';
-import { Permission } from '../../models/Auth.model';
+import { Permission, PERMISSION_SETS } from '../../models/Auth.model';
 
 interface NavItem {
-  label:       string;
-  icon:        string;
-  route:       string;
-  permission?: Permission;
-  // rutas que también deben marcar este item como activo
-  activeFor?:  string[];
+  label:          string;
+  icon:           string;
+  route:          string;
+  permission?:    Permission;
+  superadminOnly?: boolean;   // solo visible si el usuario tiene todos los permisos superadmin
+  activeFor?:     string[];
 }
 
 @Component({
@@ -34,7 +34,8 @@ export class SidebarComponent {
     { label: 'Tickets',   icon: 'pi-list',           route: '/home/tickets', permission: 'tickets_view' },
     { label: 'Mi Cuenta', icon: 'pi-user',           route: '/home/profile', permission: 'user_view', activeFor: ['/home/profile'] },
     { label: 'Grupos',    icon: 'pi-users',          route: '/home/groups', permission: 'groups_view'                            },
-    { label: 'Usuarios',  icon: 'pi-id-card',        route: '/home/user',  permission: 'users_view'                              },
+    { label: 'Usuarios',  icon: 'pi-id-card',        route: '/home/user',   permission: 'users_view'                              },
+    { label: 'Admin',     icon: 'pi-shield',         route: '/home/admin',  superadminOnly: true                                  },
   ];
 
   constructor(
@@ -43,10 +44,19 @@ export class SidebarComponent {
     private router:  Router,
   ) {}
 
-  get visibleItems(): NavItem[] {
-    return this.navItems.filter(item =>
-      !item.permission || this.permsSvc.hasPermission(item.permission)
+  get isSuperAdmin(): boolean {
+    const payload = this.authSvc.getPayload();
+    if (!payload) return false;
+    return PERMISSION_SETS['superadmin'].every(p =>
+      payload.permissions.includes(p)
     );
+  }
+
+  get visibleItems(): NavItem[] {
+    return this.navItems.filter(item => {
+      if (item.superadminOnly) return this.isSuperAdmin;
+      return !item.permission || this.permsSvc.hasPermission(item.permission);
+    });
   }
 
   /** Marca el item activo también cuando la URL empieza por alguna ruta en activeFor */

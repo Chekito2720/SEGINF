@@ -14,23 +14,29 @@ export type Permission =
   | 'tickets_edit'  | 'ticket_edit'
   | 'ticket_delete' | 'tickets_add'  | 'ticket_add';
 
-// ─── Perfiles hardcodeados (sin roles, solo permisos) ─────────────────────────
-export const PERMISSION_PROFILES: Record<string, Permission[]> = {
+// ─── Conjuntos de permisos (solo para el panel Admin — botones "Plantilla") ────
+// NO se asignan a usuarios. Son atajos de UI para aplicar un conjunto rápido
+// al crear/editar un usuario en el panel admin. Los permisos reales de cada
+// usuario están definidos individualmente abajo en USERS[].permissions.
+export const PERMISSION_SETS: Record<string, Permission[]> = {
   superadmin: [
     'groups_view','group_view','groups_edit','group_edit','groups_delete','group_delete','groups_add','group_add',
     'users_view','user_view','users_edit','user_edit','user_delete','user_add',
     'tickets_view','ticket_view','tickets_edit','ticket_edit','ticket_delete','tickets_add','ticket_add',
   ],
-  group_admin: [
+  avanzado: [
     'group_view','group_edit',
     'users_view','user_view',
     'tickets_view','ticket_view','tickets_edit','ticket_edit','ticket_delete','tickets_add','ticket_add',
   ],
-  group_member: [
+  basico: [
     'ticket_view',
     'user_view',
   ],
 };
+
+/** @deprecated Usa PERMISSION_SETS */
+export const PERMISSION_PROFILES = PERMISSION_SETS;
 
 // ─── Usuarios hardcodeados ────────────────────────────────────────────────────
 export interface AppUser {
@@ -69,19 +75,30 @@ export const USERS: AppUser[] = [
   {
     id: 1, fullName: 'Super Admin', username: 'superadmin', email: 'admin@miapp.com', password: 'Admin@12345',
     phone: '50312345678', birthDate: '1990-01-01', address: 'Oficina Central',
-    permissions: PERMISSION_PROFILES['superadmin'],
+    permissions: [
+      'groups_view','group_view','groups_edit','group_edit','groups_delete','group_delete','groups_add','group_add',
+      'users_view','user_view','users_edit','user_edit','user_delete','user_add',
+      'tickets_view','ticket_view','tickets_edit','ticket_edit','ticket_delete','tickets_add','ticket_add',
+    ],
     groupIds: [1, 2, 3],
   },
   {
     id: 2, fullName: 'Ana García', username: 'ana_garcia', email: 'ana@miapp.com', password: 'Usuario@12345',
     phone: '50387654321', birthDate: '1995-06-15', address: 'Calle Ejemplo 123',
-    permissions: PERMISSION_PROFILES['group_admin'],
+    permissions: [
+      'group_view','group_edit',
+      'users_view','user_view',
+      'tickets_view','ticket_view','tickets_edit','ticket_edit','ticket_delete','tickets_add','ticket_add',
+    ],
     groupIds: [1, 3],
   },
   {
     id: 3, fullName: 'Carlos López', username: 'carlos_lopez', email: 'carlos@miapp.com', password: 'Carlos@12345',
     phone: '50311112222', birthDate: '1998-03-20', address: 'Avenida Principal 45',
-    permissions: PERMISSION_PROFILES['group_member'],
+    permissions: [
+      'ticket_view',
+      'user_view',
+    ],
     groupIds: [2],
   },
 ];

@@ -50,7 +50,7 @@
 }
 
 .auth-header h1 {
-    font-family: 'Playfair Display', serif;
+    font-family: 'DM Sans', sans-serif;
     font-size: 1.75rem;
     color: #f0f0ff;
     margin-bottom: 0.35rem;
@@ -242,7 +242,7 @@
 }
 
 .group-name {
-    font-family: 'Playfair Display', serif;
+    font-family: 'DM Sans', sans-serif;
     font-size: 1.15rem;
     font-weight: 700;
     color: #f0f0ff;

@@ -1,0 +1,329 @@
+<p-toast position="top-right" />
+
+<!-- Guard: solo superadmin -->
+@if (!isSuperAdmin()) {
+<div class="adm-blocked">
+    <i class="pi pi-lock"></i>
+    <h2>Acceso restringido</h2>
+    <p>Esta sección es exclusiva del Superadmin.</p>
+</div>
+} @else {
+
+<div class="adm-wrap">
+
+    <!-- ══ HEADER ══════════════════════════════════════════════════════ -->
+    <header class="adm-header">
+        <div class="adm-title-block">
+            <div class="adm-title-icon"><i class="pi pi-shield"></i></div>
+            <div>
+                <h1 class="adm-title">Gestión de Usuarios</h1>
+                <span class="adm-subtitle">Panel exclusivo · Superadmin</span>
+            </div>
+        </div>
+        <button class="adm-btn accent" (click)="openCreate()">
+            <i class="pi pi-user-plus"></i> Nuevo usuario
+        </button>
+    </header>
+
+    <div class="adm-layout">
+
+        <!-- ── LEFT: lista de usuarios ──────────────────────────────────── -->
+        <aside class="adm-sidebar">
+
+            <!-- Búsqueda -->
+            <div class="adm-search-wrap">
+                <i class="pi pi-search adm-search-icon"></i>
+                <input class="adm-search" type="text" placeholder="Buscar usuario…" [value]="search()"
+                    (input)="search.set($any($event.target).value)" />
+            </div>
+
+            <div class="adm-user-list">
+                @for (u of filteredUsers(); track u.id) {
+                <div class="adm-user-item" [class.active]="selected()?.id === u.id" (click)="selectUser(u)">
+
+                    <div class="adm-mini-avatar" [style.background]="userColor(u.id)">
+                        {{ u.fullName.charAt(0).toUpperCase() }}
+                    </div>
+                    <div class="adm-user-meta">
+                        <span class="adm-user-name">{{ u.fullName }}</span>
+                        <span class="adm-user-email">{{ u.email }}</span>
+                    </div>
+                    <span class="adm-user-badge" [style.background]="profileColor(u) + '20'"
+                        [style.color]="profileColor(u)">
+                        {{ profileLabel(u) }}
+                    </span>
+                </div>
+                }
+
+                @if (filteredUsers().length === 0) {
+                <div class="adm-empty">
+                    <i class="pi pi-user-minus"></i>
+                    <span>Sin resultados</span>
+                </div>
+                }
+            </div>
+
+        </aside>
+
+        <!-- ── RIGHT: detalle + permisos ─────────────────────────────────── -->
+        @if (selected(); as u) {
+        <div class="adm-detail">
+
+            <!-- User card -->
+            <div class="adm-user-card">
+                <div class="adm-avatar-wrap">
+                    <div class="adm-avatar" [style.background]="userColor(u.id)">
+                        {{ u.fullName.charAt(0).toUpperCase() }}
+                    </div>
+                    <div class="adm-avatar-glow" [style.background]="userColor(u.id)"></div>
+                </div>
+                <div class="adm-user-card-info">
+                    <h2 class="adm-user-fullname">{{ u.fullName }}</h2>
+                    <span class="adm-user-card-email">
+                        <i class="pi pi-envelope"></i> {{ u.email }}
+                    </span>
+                    <span class="adm-user-card-username">
+                        <i class="pi pi-at"></i> {{ u.username }}
+                    </span>
+                    @if (u.groupIds.length > 0) {
+                    <div class="adm-user-groups">
+                        @for (gid of u.groupIds; track gid) {
+                        <span class="adm-group-pill">{{ groupName(gid) }}</span>
+                        }
+                    </div>
+                    }
+                </div>
+                <div class="adm-user-card-actions">
+                    <button class="adm-icon-btn" (click)="openEdit(u)" pTooltip="Editar datos" tooltipPosition="top">
+                        <i class="pi pi-pencil"></i>
+                    </button>
+                    <button class="adm-icon-btn danger" (click)="confirmDelete(u)" pTooltip="Eliminar usuario"
+                        tooltipPosition="top">
+                        <i class="pi pi-trash"></i>
+                    </button>
+                </div>
+            </div>
+
+            <p-divider styleClass="adm-divider" />
+
+            <!-- Permisos -->
+            <div class="adm-perms-section">
+                <div class="adm-perms-head">
+                    <div class="adm-perms-title">
+                        <i class="pi pi-key"></i>
+                        <span>Permisos</span>
+                        <span class="adm-perm-count">{{ draftCount }} / {{ 21 }}</span>
+                    </div>
+
+                    <!-- Aplicar perfil rápido -->
+                    <div class="adm-profile-btns">
+                        <span class="adm-profile-label">Plantilla:</span>
+                        @for (pk of allSets; track pk) {
+                        <button class="adm-profile-pill" (click)="applySet(pk)">
+                            {{ setNames[pk] ?? pk }}
+                        </button>
+                        }
+                    </div>
+                </div>
+
+                <!-- Grid de permisos por categoría -->
+                <div class="adm-perm-categories">
+                    @for (pg of permGroups; track pg.label) {
+                    <div class="adm-perm-cat">
+                        <div class="adm-cat-head" [style.--cat]="pg.color">
+                            <i class="pi" [ngClass]="pg.icon"></i>
+                            {{ pg.label }}
+                        </div>
+                        <div class="adm-perm-grid">
+                            @for (p of pg.perms; track p) {
+                            <button class="adm-perm-chip" [class.active]="hasPerm(p)" [style.--cat]="pg.color"
+                                (click)="togglePerm(p)">
+                                <span class="adm-perm-dot"></span>
+                                {{ p }}
+                            </button>
+                            }
+                        </div>
+                    </div>
+                    }
+                </div>
+
+                <!-- Save bar -->
+                @if (permsDirty) {
+                <div class="adm-save-bar">
+                    <span class="adm-save-hint">
+                        <i class="pi pi-exclamation-circle"></i>
+                        Tienes cambios sin guardar
+                    </span>
+                    <button class="adm-btn" (click)="discardPermissions()">
+                        Descartar
+                    </button>
+                    <button class="adm-btn accent" (click)="savePermissions()">
+                        <i class="pi pi-check"></i> Guardar permisos
+                    </button>
+                </div>
+                }
+            </div>
+
+        </div>
+        } @else {
+        <div class="adm-no-selection">
+            <i class="pi pi-user"></i>
+            <span>Selecciona un usuario</span>
+        </div>
+        }
+
+    </div><!-- /adm-layout -->
+</div>
+
+}<!-- /superadmin guard -->
+
+<!-- ══ MODAL: Crear usuario ════════════════════════════════════════ -->
+<p-dialog header="Nuevo usuario" [(visible)]="showCreate" [modal]="true" [closable]="true" styleClass="adm-dialog">
+    <div class="adm-form">
+
+        <div class="adm-form-row">
+            <div class="adm-form-field">
+                <label>Nombre completo *</label>
+                <input pInputText [(ngModel)]="userForm.fullName" class="adm-input" placeholder="Nombre completo" />
+            </div>
+            <div class="adm-form-field">
+                <label>Usuario</label>
+                <input pInputText [(ngModel)]="userForm.username" class="adm-input" placeholder="@usuario" />
+            </div>
+        </div>
+
+        <div class="adm-form-row">
+            <div class="adm-form-field">
+                <label>Correo *</label>
+                <input pInputText [(ngModel)]="userForm.email" type="email" class="adm-input"
+                    placeholder="correo@miapp.com" />
+            </div>
+            <div class="adm-form-field">
+                <label>Contraseña *</label>
+                <input pInputText [(ngModel)]="userForm.password" type="password" class="adm-input"
+                    placeholder="Contraseña" />
+            </div>
+        </div>
+
+        <div class="adm-form-row">
+            <div class="adm-form-field">
+                <label>Teléfono</label>
+                <input pInputText [(ngModel)]="userForm.phone" type="tel" class="adm-input" placeholder="+503..." />
+            </div>
+            <div class="adm-form-field">
+                <label>Fecha de nacimiento</label>
+                <input pInputText [(ngModel)]="userForm.birthDate" type="date" class="adm-input" />
+            </div>
+        </div>
+
+        <div class="adm-form-field">
+            <label>Dirección</label>
+            <input pInputText [(ngModel)]="userForm.address" class="adm-input" placeholder="Calle, ciudad..." />
+        </div>
+
+        <!-- Permisos iniciales -->
+        <div class="adm-form-field">
+            <label>Permisos iniciales</label>
+            <div class="adm-profile-btns" style="margin-bottom:.5rem">
+                @for (pk of allSets; track pk) {
+                <button class="adm-profile-pill" (click)="applySet(pk)">
+                    {{ setNames[pk] ?? pk }}
+                </button>
+                }
+            </div>
+            <div class="adm-perm-categories compact">
+                @for (pg of permGroups; track pg.label) {
+                <div class="adm-perm-cat">
+                    <div class="adm-cat-head" [style.--cat]="pg.color">
+                        <i class="pi" [ngClass]="pg.icon"></i> {{ pg.label }}
+                    </div>
+                    <div class="adm-perm-grid">
+                        @for (p of pg.perms; track p) {
+                        <button class="adm-perm-chip" [class.active]="hasPerm(p)" [style.--cat]="pg.color"
+                            (click)="togglePerm(p)">
+                            <span class="adm-perm-dot"></span>{{ p }}
+                        </button>
+                        }
+                    </div>
+                </div>
+                }
+            </div>
+        </div>
+
+        @if (formError) {
+        <div class="adm-form-error"><i class="pi pi-exclamation-circle"></i> {{ formError }}</div>
+        }
+    </div>
+    <ng-template pTemplate="footer">
+        <button class="adm-btn" (click)="showCreate.set(false)">Cancelar</button>
+        <button class="adm-btn accent" (click)="saveCreate()">
+            <i class="pi pi-check"></i> Crear usuario
+        </button>
+    </ng-template>
+</p-dialog>
+
+<!-- ══ MODAL: Editar usuario ═══════════════════════════════════════ -->
+<p-dialog header="Editar usuario" [(visible)]="showEdit" [modal]="true" [closable]="true" styleClass="adm-dialog">
+    <div class="adm-form">
+        <div class="adm-form-row">
+            <div class="adm-form-field">
+                <label>Nombre completo *</label>
+                <input pInputText [(ngModel)]="userForm.fullName" class="adm-input" />
+            </div>
+            <div class="adm-form-field">
+                <label>Usuario</label>
+                <input pInputText [(ngModel)]="userForm.username" class="adm-input" />
+            </div>
+        </div>
+        <div class="adm-form-row">
+            <div class="adm-form-field">
+                <label>Correo *</label>
+                <input pInputText [(ngModel)]="userForm.email" type="email" class="adm-input" />
+            </div>
+            <div class="adm-form-field">
+                <label>Nueva contraseña</label>
+                <input pInputText [(ngModel)]="userForm.password" type="password" class="adm-input"
+                    placeholder="Dejar en blanco para no cambiar" />
+            </div>
+        </div>
+        <div class="adm-form-row">
+            <div class="adm-form-field">
+                <label>Teléfono</label>
+                <input pInputText [(ngModel)]="userForm.phone" type="tel" class="adm-input" />
+            </div>
+            <div class="adm-form-field">
+                <label>Fecha de nacimiento</label>
+                <input pInputText [(ngModel)]="userForm.birthDate" type="date" class="adm-input" />
+            </div>
+        </div>
+        <div class="adm-form-field">
+            <label>Dirección</label>
+            <input pInputText [(ngModel)]="userForm.address" class="adm-input" />
+        </div>
+        @if (formError) {
+        <div class="adm-form-error"><i class="pi pi-exclamation-circle"></i> {{ formError }}</div>
+        }
+    </div>
+    <ng-template pTemplate="footer">
+        <button class="adm-btn" (click)="showEdit.set(false)">Cancelar</button>
+        <button class="adm-btn accent" (click)="saveEdit()">
+            <i class="pi pi-check"></i> Guardar
+        </button>
+    </ng-template>
+</p-dialog>
+
+<!-- ══ MODAL: Confirmar eliminación ═══════════════════════════════ -->
+<p-dialog header="Eliminar usuario" [(visible)]="showDeleteConfirm" [modal]="true" [closable]="true"
+    styleClass="adm-dialog sm">
+    <div class="adm-confirm-body">
+        <i class="pi pi-user-minus adm-warn-icon"></i>
+        <p>¿Eliminar a <strong>{{ selected()?.fullName }}</strong>?</p>
+        <p class="adm-confirm-sub">Esta acción no se puede deshacer.</p>
+    </div>
+    <ng-template pTemplate="footer">
+        <button class="adm-btn" (click)="showDeleteConfirm.set(false)">Cancelar</button>
+        <button class="adm-btn danger" (click)="executeDelete()">
+            <i class="pi pi-trash"></i> Eliminar
+        </button>
+    </ng-template>
+</p-dialog>

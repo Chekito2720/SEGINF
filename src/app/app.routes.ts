@@ -1,14 +1,27 @@
 import { Routes } from '@angular/router';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { AuthService } from './Services/Auth.service';
+import { AuthService }      from './Services/Auth.service';
+import { PERMISSION_SETS }  from './models/Auth.model';
 
-// Guard simple: requiere estar logueado y tener grupo seleccionado
+// Guard: requiere estar logueado y tener grupo seleccionado
 const authGuard = () => {
   const auth   = inject(AuthService);
   const router = inject(Router);
   if (auth.isLoggedIn() && auth.getGroup()) return true;
   return router.createUrlTree(['/auth/login']);
+};
+
+// Guard: solo superadmin (tiene todos los permisos del conjunto superadmin)
+const superadminGuard = () => {
+  const auth    = inject(AuthService);
+  const router  = inject(Router);
+  const payload = auth.getPayload();
+  const isSuper = !!payload && PERMISSION_SETS['superadmin'].every(p =>
+    payload.permissions.includes(p)
+  );
+  if (isSuper) return true;
+  return router.createUrlTree(['/home']);
 };
 
 export const routes: Routes = [
@@ -39,6 +52,7 @@ export const routes: Routes = [
       { path: 'crud',       loadComponent: () => import('./pages/crud/crud').then(m => m.CrudComponent)     },
       { path: 'groups',     loadComponent: () => import('./pages/groups/groups').then(m => m.GroupsComponent) },
       { path: 'user',       loadComponent: () => import('./pages/user/user').then(m => m.UserComponent)     },
+      { path: 'admin',      canActivate: [superadminGuard], loadComponent: () => import('./pages/admin/admin').then(m => m.AdminComponent)   },
     ]
   },
   { path: '**', redirectTo: '' }
