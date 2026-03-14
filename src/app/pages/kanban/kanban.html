@@ -69,9 +69,16 @@
 
                     <!-- Footer -->
                     <div class="kb-card-foot">
-                        <div class="kb-assignee">
-                            <div class="kb-avatar">{{ assigneeInitial(ticket.assignedToId) }}</div>
-                            <span>{{ assigneeName(ticket.assignedToId) }}</span>
+                        <div class="kb-people">
+                            <div class="kb-assignee" pTooltip="Asignado a" tooltipPosition="top">
+                                <div class="kb-avatar">{{ assigneeInitial(ticket.assignedToId) }}</div>
+                                <span>{{ assigneeName(ticket.assignedToId) }}</span>
+                            </div>
+                            <span class="kb-people-sep">·</span>
+                            <div class="kb-creator" pTooltip="Creado por" tooltipPosition="top">
+                                <i class="pi pi-user-edit"></i>
+                                <span>{{ createdByName(ticket.createdById) }}</span>
+                            </div>
                         </div>
 
                         <div class="kb-dates">

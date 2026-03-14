@@ -88,7 +88,7 @@ export const USERS: AppUser[] = [
     permissions: [
       'group_view','group_edit',
       'users_view','user_view',
-      'tickets_view','ticket_view','tickets_edit','ticket_edit','ticket_delete','tickets_add','ticket_add',
+      'tickets_view','ticket_view','tickets_edit','ticket_edit','ticket_delete','tickets_add',
     ],
     groupIds: [1, 3],
   },

@@ -1,5 +1,6 @@
 import { Component, computed, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
@@ -17,7 +18,7 @@ import { PermissionsService } from '../../Services/Permissions.service';
 import { HasPermissionDirective } from '../../directives/Has permission.directive';
 import {
   Ticket, TicketStatus, TicketPriority,
-  USERS, AppGroup
+  USERS, AppGroup, GROUPS
 } from '../../models/Auth.model';
 
 export type KanbanCol = {
@@ -32,7 +33,8 @@ export type KanbanCol = {
   selector: 'app-home',
   standalone: true,
   imports: [
-    CommonModule, FormsModule,
+    CommonModule,
+    RouterLink, FormsModule,
     ButtonModule, DialogModule, InputTextModule, TextareaModule,
     SelectModule, TagModule, ToastModule, TooltipModule, DividerModule,
     HasPermissionDirective,
@@ -86,11 +88,36 @@ export class HomeComponent implements OnInit {
     public  permsSvc:  PermissionsService,
     private ticketSvc: TicketService,
     private msgSvc:    MessageService,
+    private router:    Router,
   ) {}
+
+  // Grupos disponibles para el usuario
+  userGroups = computed(() => this.authSvc.getUserGroups());
+
+  // ¿Puede cambiar de grupo? → tiene más de 1 grupo asignado
+  get canSwitchGroup(): boolean {
+    return this.userGroups().length > 1;
+  }
 
   ngOnInit() {
     this.group.set(this.authSvc.getGroup());
     this.loadTickets();
+  }
+
+  switchGroup(g: AppGroup) {
+    if (g.id === this.group()?.id) return;
+    this.authSvc.selectGroup(g.id);
+    this.group.set(g);
+    this.loadTickets();
+    this.msgSvc.add({
+      severity: 'info',
+      summary: 'Grupo cambiado',
+      detail: `Ahora trabajas en ${g.nombre}`,
+    });
+  }
+
+  groupTicketCount(gId: number): number {
+    return GROUPS.find(g => g.id === gId)?.tickets ?? 0;
   }
 
   loadTickets() {
@@ -127,10 +154,7 @@ export class HomeComponent implements OnInit {
   }
 
   openEdit(t: Ticket) {
-    this.form = { ...t };
-    this.isEditing.set(true);
-    this.editingId.set(t.id);
-    this.showModal.set(true);
+    this.router.navigate(['/home/ticket', t.id]);
   }
 
   save() {
@@ -165,6 +189,9 @@ export class HomeComponent implements OnInit {
     return ({ baja: 'success', media: 'warn', alta: 'danger', critica: 'danger' } as any)[p] ?? 'secondary';
   }
   assigneeName(id: number): string {
+    return USERS.find(u => u.id === id)?.fullName ?? '—';
+  }
+  createdByName(id: number): string {
     return USERS.find(u => u.id === id)?.fullName ?? '—';
   }
   get formInvalid() { return !this.form.titulo.trim(); }

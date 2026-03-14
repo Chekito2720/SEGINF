@@ -269,6 +269,9 @@ export class KanbanComponent implements OnInit {
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────
+  createdByName(id: number): string {
+    return USERS.find(u => u.id === id)?.fullName ?? '—';
+  }
   assigneeName(id: number): string {
     return USERS.find(u => u.id === id)?.fullName ?? '—';
   }

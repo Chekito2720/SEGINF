@@ -2,36 +2,59 @@
 
 <div class="dash">
 
-    <!-- ══ TOPBAR ════════════════════════════════════════════════════════════ -->
-    <header class="topbar">
+    <!-- ══ HEADER UNIFICADO ══════════════════════════════════════════════════ -->
+    <header class="dash-header">
 
-        <div class="topbar-left">
-            <div class="group-orb" [style.background]="group()?.color">
-                <i class="pi pi-users"></i>
+        <!-- Fila superior: grupo activo + acciones -->
+        <div class="dash-header-top">
+            <div class="topbar-left">
+                <div class="group-orb" [style.background]="group()?.color">
+                    <i class="pi pi-users"></i>
+                </div>
+                <div class="topbar-text">
+                    <h1>{{ group()?.nombre ?? 'Dashboard' }}</h1>
+                    <p>{{ group()?.descripcion }}</p>
+                </div>
             </div>
-            <div class="topbar-text">
-                <h1>{{ group()?.nombre ?? 'Dashboard' }}</h1>
-                <p>{{ group()?.descripcion }}</p>
+
+            <div class="topbar-right">
+                <div class="llm-pill" [style.background]="group()?.color">
+                    <span class="llm-dot"></span>
+                    <span>{{ group()?.model }}</span>
+                </div>
+                <ng-container *ifHasPermission="'ticket_add'">
+                    <p-button label="Nuevo ticket" icon="pi pi-plus" styleClass="new-ticket-btn"
+                        (onClick)="openCreate()" />
+                </ng-container>
             </div>
         </div>
 
-        <div class="topbar-right">
-            <div class="llm-pill" [style.background]="group()?.color">
-                <span class="llm-dot"></span>
-                <span>{{ group()?.model }}</span>
+        <!-- Fila inferior: grupos disponibles (solo si el usuario tiene >1 grupo) -->
+        @if (userGroups().length > 1) {
+        <div class="dash-groups-row">
+            <span class="dash-groups-label">
+                <i class="pi pi-layer"></i> Cambiar grupo:
+            </span>
+            <div class="dash-groups-pills">
+                @for (g of userGroups(); track g.id) {
+                <button class="dash-gpill" [class.active]="g.id === group()?.id" [style.--gcolor]="g.color"
+                    (click)="switchGroup(g)">
+                    <span class="dash-gpill-dot" [style.background]="g.color"></span>
+                    {{ g.nombre }}
+                    @if (g.id === group()?.id) {
+                    <i class="pi pi-check dash-gpill-check"></i>
+                    }
+                </button>
+                }
             </div>
-
-            <ng-container *ifHasPermission="'ticket_add'">
-                <p-button label="Nuevo ticket" icon="pi pi-plus" styleClass="new-ticket-btn" (onClick)="openCreate()" />
-            </ng-container>
         </div>
+        }
 
     </header>
 
     <!-- ══ STAT STRIP ════════════════════════════════════════════════════════ -->
     <section class="stat-strip">
 
-        <!-- Total -->
         <button class="stat-pill stat-total" [class.active]="filter() === 'all'" (click)="filter.set('all')">
             <span class="pill-num">{{ tickets().length }}</span>
             <span class="pill-lbl">Total</span>
@@ -50,12 +73,33 @@
 
     </section>
 
+    <!-- ══ ACCESOS RÁPIDOS ═══════════════════════════════════════════════════ -->
+    <section class="quick-access">
+        <ng-container *ifHasPermission="'tickets_view'">
+            <a class="qa-card" routerLink="/home/kanban">
+                <div class="qa-icon"><i class="pi pi-table"></i></div>
+                <div class="qa-text">
+                    <span class="qa-label">Kanban</span>
+                    <span class="qa-sub">Vista de columnas</span>
+                </div>
+                <i class="pi pi-arrow-right qa-arrow"></i>
+            </a>
+            <a class="qa-card" routerLink="/home/tickets">
+                <div class="qa-icon" style="--qa-color:#38bdf8"><i class="pi pi-list"></i></div>
+                <div class="qa-text">
+                    <span class="qa-label">Lista de tickets</span>
+                    <span class="qa-sub">Vista tabular con filtros</span>
+                </div>
+                <i class="pi pi-arrow-right qa-arrow"></i>
+            </a>
+        </ng-container>
+    </section>
+
     <!-- ══ KANBAN BOARD ═══════════════════════════════════════════════════════ -->
     <section class="board">
         @for (c of columns; track c.status) {
         <div class="lane" [style.--accent]="c.accent" [style.--glow]="c.glow">
 
-            <!-- Lane header -->
             <div class="lane-head">
                 <span class="lane-dot" [style.background]="c.accent"></span>
                 <span class="lane-title">{{ c.label }}</span>
@@ -64,9 +108,7 @@
                 </span>
             </div>
 
-            <!-- Cards -->
             <div class="lane-body">
-
                 @for (t of colTickets(c.status); track t.id) {
                 <article class="tcard" [style.--accent]="c.accent">
 
@@ -83,16 +125,21 @@
                     <p class="tcard-desc">{{ t.descripcion }}</p>
 
                     <div class="tcard-foot">
-                        <div class="tcard-assignee">
-                            <div class="avatar-xs">{{ assigneeName(t.assignedToId).charAt(0) }}</div>
-                            <span>{{ assigneeName(t.assignedToId) }}</span>
+                        <div class="tcard-people">
+                            <div class="tcard-person" pTooltip="Asignado a" tooltipPosition="top">
+                                <div class="avatar-xs assignee">{{ assigneeName(t.assignedToId).charAt(0) }}</div>
+                                <span>{{ assigneeName(t.assignedToId) }}</span>
+                            </div>
+                            <span class="tcard-person-sep">·</span>
+                            <div class="tcard-person creator" pTooltip="Creado por" tooltipPosition="top">
+                                <i class="pi pi-user-edit"></i>
+                                <span>{{ createdByName(t.createdById) }}</span>
+                            </div>
                         </div>
                         <span class="tcard-date">{{ t.createdAt }}</span>
                     </div>
 
-                    <!-- Move / Edit / Delete actions -->
                     <div class="tcard-actions">
-
                         @if (prevStatus(c.status)) {
                         <ng-container *ifHasPermission="'ticket_edit'">
                             <button class="act-btn act-move" [pTooltip]="'← ' + col(prevStatus(c.status)!).label"
@@ -101,21 +148,18 @@
                             </button>
                         </ng-container>
                         }
-
                         <ng-container *ifHasPermission="'ticket_edit'">
                             <button class="act-btn act-edit" pTooltip="Editar" tooltipPosition="top"
                                 (click)="openEdit(t)">
                                 <i class="pi pi-pencil"></i>
                             </button>
                         </ng-container>
-
                         <ng-container *ifHasPermission="'ticket_delete'">
                             <button class="act-btn act-del" pTooltip="Eliminar" tooltipPosition="top"
                                 (click)="deleteTicket(t.id)">
                                 <i class="pi pi-trash"></i>
                             </button>
                         </ng-container>
-
                         @if (nextStatus(c.status)) {
                         <ng-container *ifHasPermission="'ticket_edit'">
                             <button class="act-btn act-move" [pTooltip]="col(nextStatus(c.status)!).label + ' →'"
@@ -124,7 +168,6 @@
                             </button>
                         </ng-container>
                         }
-
                     </div>
 
                 </article>
@@ -136,7 +179,6 @@
                     <span>Sin tickets</span>
                 </div>
                 }
-
             </div>
         </div>
         }
@@ -156,7 +198,13 @@
                 <span class="ritem-id">#{{ t.id }}</span>
                 <div class="ritem-info">
                     <span class="ritem-title">{{ t.titulo }}</span>
-                    <span class="ritem-who">{{ assigneeName(t.assignedToId) }}</span>
+                    <span class="ritem-who">
+                        <span pTooltip="Asignado a" tooltipPosition="top">{{ assigneeName(t.assignedToId) }}</span>
+                        <span class="ritem-sep">·</span>
+                        <span class="ritem-creator" pTooltip="Creado por" tooltipPosition="top">
+                            <i class="pi pi-user-edit"></i> {{ createdByName(t.createdById) }}
+                        </span>
+                    </span>
                 </div>
                 <span class="ritem-status" [style.background]="col(t.status).glow" [style.color]="col(t.status).accent">
                     <i class="pi" [ngClass]="col(t.status).icon"></i>
@@ -185,18 +233,15 @@
     </ng-template>
 
     <div class="dlg-body">
-
         <div class="dlg-field">
             <label>Título <span class="req">*</span></label>
             <input pInputText [(ngModel)]="form.titulo" placeholder="¿Qué hay que resolver?" class="dlg-input" />
         </div>
-
         <div class="dlg-field">
             <label>Descripción</label>
             <textarea pTextarea [(ngModel)]="form.descripcion" placeholder="Detalla el contexto o pasos a seguir..."
                 rows="3" class="dlg-textarea"></textarea>
         </div>
-
         <div class="dlg-row">
             <div class="dlg-field">
                 <label>Estado</label>
@@ -209,13 +254,11 @@
                     styleClass="dlg-select" />
             </div>
         </div>
-
         <div class="dlg-field">
             <label>Asignado a</label>
             <p-select [(ngModel)]="form.assignedToId" [options]="memberOpts" optionLabel="label" optionValue="value"
                 styleClass="dlg-select" />
         </div>
-
     </div>
 
     <ng-template pTemplate="footer">

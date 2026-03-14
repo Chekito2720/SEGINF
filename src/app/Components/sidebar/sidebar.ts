@@ -29,13 +29,11 @@ export class SidebarComponent {
   collapsed = signal(false);
 
   navItems: NavItem[] = [
-    { label: 'Dashboard', icon: 'pi-objects-column', route: '/home'                                                              },
-    { label: 'Kanban',    icon: 'pi-table',          route: '/home/kanban',  permission: 'tickets_view', activeFor: ['/home/ticket'] },
-    { label: 'Tickets',   icon: 'pi-list',           route: '/home/tickets', permission: 'tickets_view' },
-    { label: 'Mi Cuenta', icon: 'pi-user',           route: '/home/profile', permission: 'user_view', activeFor: ['/home/profile'] },
-    { label: 'Grupos',    icon: 'pi-users',          route: '/home/groups', permission: 'groups_view'                            },
-    { label: 'Usuarios',  icon: 'pi-id-card',        route: '/home/user',   permission: 'users_view'                              },
-    { label: 'Admin',     icon: 'pi-shield',         route: '/home/admin',  superadminOnly: true                                  },
+    { label: 'Dashboard', icon: 'pi-objects-column', route: '/home',         activeFor: ['/home/kanban', '/home/tickets', '/home/ticket'] },
+    { label: 'Mi Cuenta', icon: 'pi-user',           route: '/home/profile', permission: 'user_view',   activeFor: ['/home/profile']     },
+    { label: 'Grupos',    icon: 'pi-users',          route: '/home/groups',  permission: 'groups_view'                                    },
+    { label: 'Usuarios',  icon: 'pi-id-card',        route: '/home/user',    permission: 'users_view'                                     },
+    { label: 'Admin',     icon: 'pi-shield',         route: '/home/admin',   superadminOnly: true                                         },
   ];
 
   constructor(
