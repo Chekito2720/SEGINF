@@ -8,7 +8,7 @@
             <h1 class="gm-title">Gestión de grupos</h1>
             <span class="gm-subtitle">{{ groups().length }} grupos disponibles</span>
         </div>
-        @if (can('group_add')) {
+        @if (can('groups_manage') || can('group_add')) {
         <button class="gm-btn accent" (click)="openCreate()">
             <i class="pi pi-plus"></i> Nuevo grupo
         </button>
@@ -53,12 +53,12 @@
                     </div>
                 </div>
                 <div class="gm-detail-actions">
-                    @if (can('group_edit')) {
+                    @if (can('groups_manage') || can('group_edit')) {
                     <button class="gm-icon-btn" (click)="openEdit(g)" pTooltip="Editar grupo" tooltipPosition="top">
                         <i class="pi pi-pencil"></i>
                     </button>
                     }
-                    @if (can('group_delete')) {
+                    @if (can('groups_manage') || can('group_delete')) {
                     <button class="gm-icon-btn danger" (click)="confirmDelete(g)" pTooltip="Eliminar grupo"
                         tooltipPosition="top">
                         <i class="pi pi-trash"></i>
@@ -85,13 +85,38 @@
 
             <div class="gm-divider"></div>
 
+            <!-- ── PERMISOS DEL GRUPO (base) ──────────────────────────────── -->
+            <div class="gm-section">
+                <div class="gm-section-head">
+                    <i class="pi pi-lock"></i>
+                    <span>Permisos del grupo</span>
+                    <span class="gm-count">{{ (g.defaultPermissions ?? []).length }}</span>
+                    @if (can('groups_manage') || can('group_edit')) {
+                    <button class="gm-add-btn" (click)="openGroupPerms()">
+                        <i class="pi pi-cog"></i> Configurar
+                    </button>
+                    }
+                </div>
+
+                <div class="gm-perm-chips">
+                    @for (p of (g.defaultPermissions ?? []); track p) {
+                    <span class="gm-perm-chip">{{ permLabels[p] }}</span>
+                    }
+                    @if (!(g.defaultPermissions ?? []).length) {
+                    <span class="gm-perm-empty">Sin permisos base definidos</span>
+                    }
+                </div>
+            </div>
+
+            <div class="gm-divider"></div>
+
             <!-- ── MIEMBROS ─────────────────────────────────────────────── -->
             <div class="gm-section">
                 <div class="gm-section-head">
                     <i class="pi pi-users"></i>
                     <span>Miembros</span>
                     <span class="gm-count">{{ g.members.length }}</span>
-                    @if (can('group_add')) {
+                    @if (can('groups_manage') || can('group_add')) {
                     <button class="gm-add-btn" (click)="openAddMember()">
                         <i class="pi pi-user-plus"></i> Añadir
                     </button>
@@ -108,8 +133,24 @@
                             <span class="gm-member-name">{{ u.fullName }}</span>
                             <span class="gm-member-email">{{ u.email }}</span>
                         </div>
-                        <span class="gm-member-perms">{{ u.permissions.length }} permisos</span>
-                        @if (can('group_delete')) {
+                        <div class="gm-member-perms-wrap">
+                            <span class="gm-member-perms" [class.override]="hasGroupOverride(u)">
+                                {{ getEffectivePermCount(u) }} permisos
+                            </span>
+                            @if (hasGroupOverride(u)) {
+                            <span class="gm-override-badge" pTooltip="Permisos personalizados para este grupo"
+                                tooltipPosition="top">
+                                <i class="pi pi-shield"></i>
+                            </span>
+                            }
+                        </div>
+                        @if (can('groups_manage') || can('group_edit')) {
+                        <button class="gm-perm-btn" (click)="openUserPerms(u)"
+                            pTooltip="Configurar permisos en este grupo" tooltipPosition="left">
+                            <i class="pi pi-shield"></i>
+                        </button>
+                        }
+                        @if (can('groups_manage') || can('group_delete')) {
                         <button class="gm-remove-btn" pTooltip="Eliminar del grupo" tooltipPosition="left"
                             (click)="confirmRemove(u)">
                             <i class="pi pi-times"></i>
@@ -152,19 +193,11 @@
         <div class="gm-form-row">
             <div class="gm-form-field">
                 <label>Nivel</label>
-                <div class="gm-select-wrap">
-                    <select class="gm-select" [(ngModel)]="groupForm.nivel">
-                        @for (n of nivelOptions; track n) { <option [value]="n">{{ n }}</option> }
-                    </select>
-                </div>
+                <p-select [(ngModel)]="groupForm.nivel" [options]="nivelOptions" class="gm-select" />
             </div>
             <div class="gm-form-field">
                 <label>Modelo LLM</label>
-                <div class="gm-select-wrap">
-                    <select class="gm-select" [(ngModel)]="groupForm.model">
-                        @for (m of modelOptions; track m) { <option [value]="m">{{ m }}</option> }
-                    </select>
-                </div>
+                <p-select [(ngModel)]="groupForm.model" [options]="modelOptions" class="gm-select" />
             </div>
         </div>
         <div class="gm-form-field">
@@ -200,19 +233,11 @@
         <div class="gm-form-row">
             <div class="gm-form-field">
                 <label>Nivel</label>
-                <div class="gm-select-wrap">
-                    <select class="gm-select" [(ngModel)]="groupForm.nivel">
-                        @for (n of nivelOptions; track n) { <option [value]="n">{{ n }}</option> }
-                    </select>
-                </div>
+                <p-select [(ngModel)]="groupForm.nivel" [options]="nivelOptions" class="gm-select" />
             </div>
             <div class="gm-form-field">
                 <label>Modelo LLM</label>
-                <div class="gm-select-wrap">
-                    <select class="gm-select" [(ngModel)]="groupForm.model">
-                        @for (m of modelOptions; track m) { <option [value]="m">{{ m }}</option> }
-                    </select>
-                </div>
+                <p-select [(ngModel)]="groupForm.model" [options]="modelOptions" class="gm-select" />
             </div>
         </div>
         <div class="gm-form-field">
@@ -264,9 +289,7 @@
             </span>
             }
             <span class="gm-field-hint">
-                Usuarios disponibles:
-                @for (u of []; track u) {}
-                ana&#64;miapp.com · admin&#64;miapp.com · carlos&#64;miapp.com
+                Usuarios disponibles: ana&#64;miapp.com · admin&#64;miapp.com · carlos&#64;miapp.com
             </span>
         </div>
     </div>
@@ -291,6 +314,107 @@
         <button class="gm-btn" (click)="showRemoveConfirm.set(false)">Cancelar</button>
         <button class="gm-btn danger" (click)="executeRemove()">
             <i class="pi pi-times"></i> Eliminar
+        </button>
+    </ng-template>
+</p-dialog>
+
+<!-- ══ MODAL: Permisos de usuario en el grupo ═════════════════════ -->
+<p-dialog [(visible)]="showUserPermsModal" [modal]="true" [closable]="true" styleClass="gm-dialog perms">
+    <ng-template pTemplate="header">
+        <div class="gm-perm-modal-header">
+            <i class="pi pi-shield gm-perm-modal-icon"></i>
+            <div>
+                <div class="gm-perm-modal-title">Permisos de {{ permsUser()?.fullName }}</div>
+                <div class="gm-perm-modal-sub">en grupo "{{ selected()?.nombre }}"</div>
+            </div>
+        </div>
+    </ng-template>
+
+    <div class="gm-perm-source" [class.override]="hasGroupOverride(permsUser()!)">
+        @if (hasGroupOverride(permsUser()!)) {
+        <i class="pi pi-shield"></i>
+        <span>Usando permisos personalizados para este grupo</span>
+        } @else {
+        <i class="pi pi-info-circle"></i>
+        <span>Usando permisos globales del usuario (sin override de grupo)</span>
+        }
+    </div>
+
+    <div class="gm-perm-categories">
+        @for (cat of permCategories; track cat.label) {
+        <div class="gm-perm-cat">
+            <div class="gm-perm-cat-header">
+                <i class="pi {{ cat.icon }}"></i>
+                <span>{{ cat.label }}</span>
+            </div>
+            <div class="gm-perm-grid">
+                @for (p of cat.perms; track p) {
+                <div class="gm-perm-toggle" [class.active]="permsForm[p]"
+                    (click)="permsForm[p] = !permsForm[p]">
+                    <p-checkbox [(ngModel)]="permsForm[p]" [binary]="true" />
+                    <span class="gm-perm-toggle-label">{{ permLabels[p] }}</span>
+                </div>
+                }
+            </div>
+        </div>
+        }
+    </div>
+
+    <ng-template pTemplate="footer">
+        @if (hasGroupOverride(permsUser()!)) {
+        <button class="gm-btn" (click)="resetToGlobal()" pTooltip="Eliminar override y usar permisos globales"
+            tooltipPosition="top">
+            <i class="pi pi-refresh"></i> Usar globales
+        </button>
+        }
+        <button class="gm-btn" (click)="showUserPermsModal.set(false)">Cancelar</button>
+        <button class="gm-btn accent" (click)="saveUserPerms()">
+            <i class="pi pi-check"></i> Guardar permisos
+        </button>
+    </ng-template>
+</p-dialog>
+
+<!-- ══ MODAL: Permisos base del grupo ═════════════════════════════ -->
+<p-dialog [(visible)]="showGroupPermsModal" [modal]="true" [closable]="true" styleClass="gm-dialog perms">
+    <ng-template pTemplate="header">
+        <div class="gm-perm-modal-header">
+            <i class="pi pi-lock gm-perm-modal-icon"></i>
+            <div>
+                <div class="gm-perm-modal-title">Permisos base del grupo</div>
+                <div class="gm-perm-modal-sub">"{{ selected()?.nombre }}" · {{ groupPermsActiveCount() }} activos</div>
+            </div>
+        </div>
+    </ng-template>
+
+    <div class="gm-perm-source">
+        <i class="pi pi-info-circle"></i>
+        <span>Estos permisos se asignan automáticamente a los nuevos miembros al unirse al grupo.</span>
+    </div>
+
+    <div class="gm-perm-categories">
+        @for (cat of permCategories; track cat.label) {
+        <div class="gm-perm-cat">
+            <div class="gm-perm-cat-header">
+                <i class="pi {{ cat.icon }}"></i>
+                <span>{{ cat.label }}</span>
+            </div>
+            <div class="gm-perm-grid">
+                @for (p of cat.perms; track p) {
+                <div class="gm-perm-toggle" [class.active]="groupPermsForm[p]"
+                    (click)="groupPermsForm[p] = !groupPermsForm[p]">
+                    <p-checkbox [(ngModel)]="groupPermsForm[p]" [binary]="true" />
+                    <span class="gm-perm-toggle-label">{{ permLabels[p] }}</span>
+                </div>
+                }
+            </div>
+        </div>
+        }
+    </div>
+
+    <ng-template pTemplate="footer">
+        <button class="gm-btn" (click)="showGroupPermsModal.set(false)">Cancelar</button>
+        <button class="gm-btn accent" (click)="saveGroupPerms()">
+            <i class="pi pi-check"></i> Guardar
         </button>
     </ng-template>
 </p-dialog>

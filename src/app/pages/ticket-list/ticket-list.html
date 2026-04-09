@@ -16,7 +16,7 @@
 
         <div class="tl-search-wrap">
             <i class="pi pi-search tl-search-icon"></i>
-            <input class="tl-search" type="text" placeholder="Buscar por título o #ID…" [value]="search()"
+            <input pInputText class="tl-search" type="text" placeholder="Buscar por título o #ID…" [value]="search()"
                 (input)="onSearch(($any($event.target)).value)" />
             @if (search()) {
             <button class="tl-search-clear" (click)="onSearch('')">

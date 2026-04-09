@@ -48,8 +48,6 @@ export const routes: Routes = [
       { path: 'ticket/:id', loadComponent: () => import('./pages/ticket-detail/ticket-detail').then(m => m.TicketDetailComponent) },
       { path: 'profile',     loadComponent: () => import('./pages/profile/profile').then(m => m.ProfileComponent) },
       { path: 'profile/:id', loadComponent: () => import('./pages/profile/profile').then(m => m.ProfileComponent) },
-      { path: 'rud',         loadComponent: () => import('./pages/rud/rud').then(m => m.RudComponent)              },
-      { path: 'crud',       loadComponent: () => import('./pages/crud/crud').then(m => m.CrudComponent)     },
       { path: 'groups',     loadComponent: () => import('./pages/groups/groups').then(m => m.GroupsComponent) },
       { path: 'user',       loadComponent: () => import('./pages/user/user').then(m => m.UserComponent)     },
       { path: 'admin',      canActivate: [superadminGuard], loadComponent: () => import('./pages/admin/admin').then(m => m.AdminComponent)   },

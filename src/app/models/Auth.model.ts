@@ -5,6 +5,7 @@ export type Permission =
   | 'groups_edit'   | 'group_edit'
   | 'groups_delete' | 'group_delete'
   | 'groups_add'    | 'group_add'
+  | 'groups_manage'
   // Users
   | 'users_view'    | 'user_view'
   | 'users_edit'    | 'user_edit'
@@ -14,13 +15,62 @@ export type Permission =
   | 'tickets_edit'  | 'ticket_edit'
   | 'ticket_delete' | 'tickets_add'  | 'ticket_add';
 
+// ─── Lista completa y etiquetas ───────────────────────────────────────────────
+export const ALL_PERMISSIONS: Permission[] = [
+  'tickets_view', 'ticket_view', 'tickets_add', 'ticket_add',
+  'tickets_edit', 'ticket_edit', 'ticket_delete',
+  'users_view', 'user_view', 'user_add', 'user_edit', 'user_delete', 'users_edit',
+  'groups_view', 'group_view', 'groups_add', 'group_add',
+  'groups_edit', 'group_edit', 'groups_delete', 'group_delete', 'groups_manage',
+];
+
+export const PERM_LABELS: Record<Permission, string> = {
+  tickets_view:   'Ver lista de tickets',
+  ticket_view:    'Ver detalle de ticket',
+  tickets_add:    'Crear tickets',
+  ticket_add:     'Agregar ticket',
+  tickets_edit:   'Editar lista de tickets',
+  ticket_edit:    'Editar ticket',
+  ticket_delete:  'Eliminar ticket',
+  users_view:     'Ver lista de usuarios',
+  user_view:      'Ver perfil de usuario',
+  users_edit:     'Editar usuarios (lista)',
+  user_add:       'Crear usuario',
+  user_edit:      'Editar usuario',
+  user_delete:    'Eliminar usuario',
+  groups_view:    'Ver lista de grupos',
+  group_view:     'Ver grupo',
+  groups_add:     'Crear grupos',
+  group_add:      'Agregar miembro al grupo',
+  groups_edit:    'Editar grupos (lista)',
+  group_edit:     'Editar grupo',
+  groups_delete:  'Eliminar grupos (lista)',
+  group_delete:   'Eliminar grupo',
+  groups_manage:  'Gestionar grupos (manage)',
+};
+
+export const PERM_CATEGORIES: { label: string; icon: string; perms: Permission[] }[] = [
+  {
+    label: 'Tickets', icon: 'pi-ticket',
+    perms: ['tickets_view', 'ticket_view', 'tickets_add', 'ticket_add', 'tickets_edit', 'ticket_edit', 'ticket_delete'],
+  },
+  {
+    label: 'Usuarios', icon: 'pi-users',
+    perms: ['users_view', 'user_view', 'user_add', 'user_edit', 'user_delete', 'users_edit'],
+  },
+  {
+    label: 'Grupos', icon: 'pi-sitemap',
+    perms: ['groups_view', 'group_view', 'groups_add', 'group_add', 'groups_edit', 'group_edit', 'groups_delete', 'group_delete', 'groups_manage'],
+  },
+];
+
 // ─── Conjuntos de permisos (solo para el panel Admin — botones "Plantilla") ────
 // NO se asignan a usuarios. Son atajos de UI para aplicar un conjunto rápido
 // al crear/editar un usuario en el panel admin. Los permisos reales de cada
 // usuario están definidos individualmente abajo en USERS[].permissions.
 export const PERMISSION_SETS: Record<string, Permission[]> = {
   superadmin: [
-    'groups_view','group_view','groups_edit','group_edit','groups_delete','group_delete','groups_add','group_add',
+    'groups_view','group_view','groups_edit','group_edit','groups_delete','group_delete','groups_add','group_add','groups_manage',
     'users_view','user_view','users_edit','user_edit','user_delete','user_add',
     'tickets_view','ticket_view','tickets_edit','ticket_edit','ticket_delete','tickets_add','ticket_add',
   ],
@@ -40,35 +90,49 @@ export const PERMISSION_PROFILES = PERMISSION_SETS;
 
 // ─── Usuarios hardcodeados ────────────────────────────────────────────────────
 export interface AppUser {
-  id:          number;
-  fullName:    string;
-  username:    string;
-  email:       string;
-  password:    string;
-  phone:       string;
-  birthDate:   string;
-  address:     string;
-  permissions: Permission[];
-  groupIds:    number[];   // grupos a los que pertenece
+  id:               number;
+  fullName:         string;
+  username:         string;
+  email:            string;
+  password:         string;
+  phone:            string;
+  birthDate:        string;
+  address:          string;
+  permissions:      Permission[];
+  groupIds:         number[];   // grupos a los que pertenece
+  groupPermissions?: Record<number, Permission[]>; // permisos específicos por grupo (override)
 }
 
 // ─── Grupos hardcodeados ──────────────────────────────────────────────────────
 export interface AppGroup {
-  id:          number;
-  nombre:      string;
-  nivel:       string;
-  autor:       string;
-  integrantes: number;
-  tickets:     number;
-  descripcion: string;
-  color:       string;   // color de fondo para la card del dashboard
-  model:       string;   // modelo LLM asignado al grupo
+  id:                  number;
+  nombre:              string;
+  nivel:               string;
+  autor:               string;
+  integrantes:         number;
+  tickets:             number;
+  descripcion:         string;
+  color:               string;   // color de fondo para la card del dashboard
+  model:               string;   // modelo LLM asignado al grupo
+  defaultPermissions?: Permission[]; // permisos base que heredan los miembros del grupo
 }
 
 export const GROUPS: AppGroup[] = [
-  { id: 1, nombre: 'Equipo Dev',  nivel: 'Avanzado',   autor: 'Ana García',   integrantes: 6, tickets: 18, descripcion: 'Desarrollo de software y arquitectura.',  color: '#1e1b4b', model: 'GPT-4o'       },
-  { id: 2, nombre: 'Soporte',     nivel: 'Intermedio', autor: 'Carlos López', integrantes: 4, tickets: 32, descripcion: 'Atención y resolución de incidencias.',   color: '#0f2d1f', model: 'Claude Sonnet' },
-  { id: 3, nombre: 'UX',          nivel: 'Básico',     autor: 'María Pérez',  integrantes: 3, tickets: 9,  descripcion: 'Diseño de experiencia de usuario.',       color: '#2d1b0f', model: 'Gemini Pro'    },
+  {
+    id: 1, nombre: 'Equipo Dev',  nivel: 'Avanzado',   autor: 'Ana García',   integrantes: 6, tickets: 18,
+    descripcion: 'Desarrollo de software y arquitectura.',  color: '#1e1b4b', model: 'GPT-4o',
+    defaultPermissions: ['tickets_view','ticket_view','tickets_add','ticket_add','tickets_edit','ticket_edit','ticket_delete'],
+  },
+  {
+    id: 2, nombre: 'Soporte',     nivel: 'Intermedio', autor: 'Carlos López', integrantes: 4, tickets: 32,
+    descripcion: 'Atención y resolución de incidencias.',   color: '#0f2d1f', model: 'Claude Sonnet',
+    defaultPermissions: ['tickets_view','ticket_view','ticket_add'],
+  },
+  {
+    id: 3, nombre: 'UX',          nivel: 'Básico',     autor: 'María Pérez',  integrantes: 3, tickets: 9,
+    descripcion: 'Diseño de experiencia de usuario.',       color: '#2d1b0f', model: 'Gemini Pro',
+    defaultPermissions: ['tickets_view','ticket_view'],
+  },
 ];
 
 export const USERS: AppUser[] = [
@@ -76,7 +140,7 @@ export const USERS: AppUser[] = [
     id: 1, fullName: 'Super Admin', username: 'superadmin', email: 'admin@miapp.com', password: 'Admin@12345',
     phone: '50312345678', birthDate: '1990-01-01', address: 'Oficina Central',
     permissions: [
-      'groups_view','group_view','groups_edit','group_edit','groups_delete','group_delete','groups_add','group_add',
+      'groups_view','group_view','groups_edit','group_edit','groups_delete','group_delete','groups_add','group_add','groups_manage',
       'users_view','user_view','users_edit','user_edit','user_delete','user_add',
       'tickets_view','ticket_view','tickets_edit','ticket_edit','ticket_delete','tickets_add','ticket_add',
     ],
@@ -91,6 +155,11 @@ export const USERS: AppUser[] = [
       'tickets_view','ticket_view','tickets_edit','ticket_edit','ticket_delete','tickets_add',
     ],
     groupIds: [1, 3],
+    // En grupo 1 tiene permisos completos; en grupo 3 solo lectura
+    groupPermissions: {
+      1: ['tickets_view','ticket_view','tickets_add','ticket_add','tickets_edit','ticket_edit','ticket_delete'],
+      3: ['tickets_view','ticket_view'],
+    },
   },
   {
     id: 3, fullName: 'Carlos López', username: 'carlos_lopez', email: 'carlos@miapp.com', password: 'Carlos@12345',
@@ -100,6 +169,10 @@ export const USERS: AppUser[] = [
       'user_view',
     ],
     groupIds: [2],
+    // En grupo 2 puede crear y ver tickets
+    groupPermissions: {
+      2: ['tickets_view','ticket_view','ticket_add'],
+    },
   },
 ];
 

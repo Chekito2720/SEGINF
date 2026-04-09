@@ -33,7 +33,7 @@
             <!-- Búsqueda -->
             <div class="adm-search-wrap">
                 <i class="pi pi-search adm-search-icon"></i>
-                <input class="adm-search" type="text" placeholder="Buscar usuario…" [value]="search()"
+                <input pInputText class="adm-search" type="text" placeholder="Buscar usuario…" [value]="search()"
                     (input)="search.set($any($event.target).value)" />
             </div>
 

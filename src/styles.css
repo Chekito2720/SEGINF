@@ -1,7 +1,7 @@
 /* =====================================================
-   GLOBAL STYLES — fuente única para todo el proyecto
+   GLOBAL STYLES — fuente única DM Sans para todo el proyecto
    ===================================================== */
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
 @import "primeicons/primeicons.css";
 
 * {
@@ -23,6 +23,25 @@ h2,
 h3,
 h4 {
   font-family: 'DM Sans', sans-serif !important;
+}
+
+/* ── Scrollbar global ────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1e2035;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #2a2d4a;
 }
 
 /* ── PrimeNG Select — dark theme global override ─────────────────────── */

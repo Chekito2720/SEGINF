@@ -117,7 +117,7 @@
 /* FEATURES */
 .features {
     padding: 5rem 2rem;
-    background: #111320;
+    background: #111325;
 }
 
 .container {
@@ -140,7 +140,7 @@
 }
 
 .feature-card {
-    background: #1c1f35;
+    background: #141627;
     border: 1px solid #2a2d4a;
     border-radius: 14px;
     padding: 1.75rem;

@@ -94,7 +94,7 @@
 
 /* ── LANE ───────────────────────────────────────────────────────── */
 .kb-lane {
-    background: #0c0e1c;
+    background: #0f1122;
     border: 1px solid #1a1d30;
     border-top: 2.5px solid var(--accent);
     border-radius: 14px;
@@ -108,7 +108,7 @@
     border-color: var(--accent) !important;
     box-shadow: 0 0 0 2px var(--accent),
         inset 0 0 30px var(--glow);
-    background: #111428;
+    background: #111325;
 }
 
 /* Lane header */

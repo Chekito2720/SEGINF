@@ -97,7 +97,7 @@
                         {{ userInitial(currentUser?.id ?? 0) }}
                     </div>
                     <div class="comment-input-wrap">
-                        <textarea [(ngModel)]="newComment" class="td-textarea comment-textarea"
+                        <textarea pTextarea [(ngModel)]="newComment" class="td-textarea comment-textarea"
                             placeholder="Escribe un comentario..." rows="2"
                             (keydown.ctrl.enter)="addComment()"></textarea>
                         <div class="comment-footer">
@@ -249,7 +249,7 @@
                     <div class="date-item">
                         <span class="date-lbl">Límite</span>
                         @if (canEditFields) {
-                        <input type="date" class="date-input" [value]="t.dueDate ?? ''"
+                        <input pInputText type="date" class="date-input" [value]="t.dueDate ?? ''"
                             (change)="changeDueDate(($any($event.target)).value)" />
                         } @else {
                         <span class="date-val" [class.overdue]="isOverdue(t.dueDate)">

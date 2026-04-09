@@ -4,6 +4,7 @@ import {
   TicketComment, TicketHistory, HistoryAction,
   TICKET_COMMENTS, TICKET_HISTORY
 } from '../models/Auth.model';
+import { PermissionsService } from './Permissions.service';
 
 @Injectable({ providedIn: 'root' })
 export class TicketService {
@@ -14,6 +15,8 @@ export class TicketService {
   private nextCommentId = TICKET_COMMENTS.length + 1;
   private nextHistoryId = TICKET_HISTORY.length  + 1;
 
+  constructor(private permsSvc: PermissionsService) {}
+
   // ── Tickets ──────────────────────────────────────────────────────────────
   getByGroup(groupId: number): Ticket[] {
     return this.tickets().filter(t => t.groupId === groupId);
@@ -21,6 +24,18 @@ export class TicketService {
 
   getByGroupAndUser(groupId: number, userId: number): Ticket[] {
     return this.tickets().filter(t => t.groupId === groupId && t.assignedToId === userId);
+  }
+
+  /**
+   * Método centralizado de acceso a tickets con control de visibilidad:
+   * - Con 'tickets_view': ve todos los tickets del grupo
+   * - Sin 'tickets_view' (solo 'ticket_view'): ve únicamente los asignados a él
+   */
+  getForUser(groupId: number, userId: number): Ticket[] {
+    if (this.permsSvc.hasPermission('tickets_view')) {
+      return this.getByGroup(groupId);
+    }
+    return this.getByGroupAndUser(groupId, userId);
   }
 
   getById(id: number): Ticket | undefined {

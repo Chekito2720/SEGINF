@@ -1,10 +1,12 @@
-import { Component, signal, computed, OnInit } from '@angular/core';
+import { Component, signal, OnInit } from '@angular/core';
 import { CommonModule }    from '@angular/common';
 import { FormsModule }     from '@angular/forms';
 import { Router }          from '@angular/router';
 import { ButtonModule }    from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { TextareaModule }  from 'primeng/textarea';
+import { SelectModule }    from 'primeng/select';
+import { CheckboxModule }  from 'primeng/checkbox';
 import { DialogModule }    from 'primeng/dialog';
 import { ToastModule }     from 'primeng/toast';
 import { TooltipModule }   from 'primeng/tooltip';
@@ -13,7 +15,10 @@ import { MessageService, ConfirmationService } from 'primeng/api';
 import { AuthService }        from '../../Services/Auth.service';
 import { TicketService }      from '../../Services/Ticket.service';
 import { PermissionsService } from '../../Services/Permissions.service';
-import { AppGroup, AppUser, USERS, GROUPS } from '../../models/Auth.model';
+import {
+  AppGroup, AppUser, USERS, GROUPS,
+  Permission, ALL_PERMISSIONS, PERM_LABELS, PERM_CATEGORIES,
+} from '../../models/Auth.model';
 
 interface ManagedGroup extends AppGroup {
   members: AppUser[];
@@ -24,7 +29,7 @@ interface ManagedGroup extends AppGroup {
   standalone: true,
   imports: [
     CommonModule, FormsModule,
-    ButtonModule, InputTextModule, TextareaModule,
+    ButtonModule, InputTextModule, TextareaModule, SelectModule, CheckboxModule,
     DialogModule, ToastModule, TooltipModule, ConfirmDialogModule,
   ],
   providers: [MessageService, ConfirmationService],
@@ -37,7 +42,7 @@ export class GroupsComponent implements OnInit {
   groups   = signal<ManagedGroup[]>([]);
   selected = signal<ManagedGroup | null>(null);
 
-  // ── Modals ────────────────────────────────────────────────────────
+  // ── Modals CRUD ───────────────────────────────────────────────────
   showCreateGroup   = signal(false);
   showEditGroup     = signal(false);
   showDeleteConfirm = signal(false);
@@ -45,7 +50,20 @@ export class GroupsComponent implements OnInit {
   showRemoveConfirm = signal(false);
   memberToRemove    = signal<AppUser | null>(null);
 
-  // ── Forms ─────────────────────────────────────────────────────────
+  // ── Modals de permisos ────────────────────────────────────────────
+  showUserPermsModal  = signal(false);
+  showGroupPermsModal = signal(false);
+  permsUser           = signal<AppUser | null>(null);
+
+  // Formularios de checkboxes: Permission → boolean
+  permsForm:      Partial<Record<Permission, boolean>> = {};
+  groupPermsForm: Partial<Record<Permission, boolean>> = {};
+
+  // Categorías y etiquetas expuestas al template
+  permCategories = PERM_CATEGORIES;
+  permLabels     = PERM_LABELS;
+
+  // ── Forms CRUD ────────────────────────────────────────────────────
   groupForm = { nombre: '', descripcion: '', nivel: '', color: '#1e1b4b', model: '' };
   addMemberEmail = '';
   addMemberError = '';
@@ -61,7 +79,6 @@ export class GroupsComponent implements OnInit {
 
   ngOnInit() {
     this.loadGroups();
-    // Seleccionar automáticamente el grupo activo del usuario
     const active = this.authSvc.getGroup();
     if (active) {
       const mg = this.groups().find(g => g.id === active.id);
@@ -71,10 +88,7 @@ export class GroupsComponent implements OnInit {
 
   loadGroups() {
     const user = this.authSvc.getUser();
-    // Solo los grupos a los que pertenece el usuario
-    const userGroups = GROUPS.filter(g =>
-      user?.groupIds.includes(g.id)
-    );
+    const userGroups = GROUPS.filter(g => user?.groupIds.includes(g.id));
     const managed: ManagedGroup[] = userGroups.map(g => ({
       ...g,
       members: USERS.filter(u => u.groupIds.includes(g.id)),
@@ -84,7 +98,7 @@ export class GroupsComponent implements OnInit {
 
   selectGroup(g: ManagedGroup) { this.selected.set(g); }
 
-  // ── Permisos ──────────────────────────────────────────────────────
+  // ── Permisos globales ─────────────────────────────────────────────
   can(p: string) { return this.permsSvc.hasPermission(p as any); }
 
   // ── Crear grupo ───────────────────────────────────────────────────
@@ -106,6 +120,7 @@ export class GroupsComponent implements OnInit {
       autor:       this.authSvc.getUser()?.fullName ?? '—',
       integrantes: 1,
       tickets:     0,
+      defaultPermissions: ['tickets_view', 'ticket_view'],
     };
     GROUPS.push(newGroup);
     this.loadGroups();
@@ -186,6 +201,11 @@ export class GroupsComponent implements OnInit {
     }
 
     user.groupIds.push(g.id);
+    // Aplicar permisos por defecto del grupo al nuevo miembro
+    if (g.defaultPermissions?.length) {
+      if (!user.groupPermissions) user.groupPermissions = {};
+      user.groupPermissions[g.id] = [...g.defaultPermissions];
+    }
     this.loadGroups();
     const updated = this.groups().find(x => x.id === g.id);
     this.selected.set(updated ?? null);
@@ -205,12 +225,105 @@ export class GroupsComponent implements OnInit {
     if (!g || !user) return;
     const i = user.groupIds.indexOf(g.id);
     if (i !== -1) user.groupIds.splice(i, 1);
+    // Limpiar overrides de permisos del grupo eliminado
+    if (user.groupPermissions) delete user.groupPermissions[g.id];
     this.loadGroups();
     const updated = this.groups().find(x => x.id === g.id);
     this.selected.set(updated ?? null);
     this.memberToRemove.set(null);
     this.showRemoveConfirm.set(false);
     this.toast('warn', 'Miembro eliminado', `${user.fullName} fue removido del grupo.`);
+  }
+
+  // ── Permisos por usuario en grupo ─────────────────────────────────
+
+  /** Devuelve los permisos efectivos del usuario en el grupo seleccionado */
+  getEffectivePerms(u: AppUser): Permission[] {
+    const g = this.selected();
+    if (!g) return u.permissions;
+    return u.groupPermissions?.[g.id] ?? u.permissions;
+  }
+
+  /** True si el usuario tiene overrides específicos para el grupo seleccionado */
+  hasGroupOverride(u: AppUser): boolean {
+    const g = this.selected();
+    return !!(g && u.groupPermissions?.[g.id]);
+  }
+
+  /** Cuenta de permisos efectivos para mostrar en la fila */
+  getEffectivePermCount(u: AppUser): number {
+    return this.getEffectivePerms(u).length;
+  }
+
+  /** Abre el modal de permisos del usuario en el grupo */
+  openUserPerms(u: AppUser) {
+    this.permsUser.set(u);
+    const effective = this.getEffectivePerms(u);
+    this.permsForm = {};
+    ALL_PERMISSIONS.forEach(p => { this.permsForm[p] = effective.includes(p); });
+    this.showUserPermsModal.set(true);
+  }
+
+  /** Guarda los permisos editados como override del grupo para ese usuario */
+  saveUserPerms() {
+    const u = this.permsUser();
+    const g = this.selected();
+    if (!u || !g) return;
+    const active = ALL_PERMISSIONS.filter(p => this.permsForm[p]);
+    if (!u.groupPermissions) u.groupPermissions = {};
+    u.groupPermissions[g.id] = active;
+    this.loadGroups();
+    const updated = this.groups().find(x => x.id === g.id);
+    this.selected.set(updated ?? null);
+    this.showUserPermsModal.set(false);
+    this.toast('success', 'Permisos actualizados',
+      `Permisos de ${u.fullName} en "${g.nombre}" guardados.`);
+  }
+
+  /** Elimina el override y vuelve a usar los permisos globales del usuario */
+  resetToGlobal() {
+    const u = this.permsUser();
+    const g = this.selected();
+    if (!u || !g || !u.groupPermissions) return;
+    delete u.groupPermissions[g.id];
+    this.loadGroups();
+    const updated = this.groups().find(x => x.id === g.id);
+    this.selected.set(updated ?? null);
+    this.showUserPermsModal.set(false);
+    this.toast('info', 'Override eliminado',
+      `${u.fullName} usará sus permisos globales en "${g.nombre}".`);
+  }
+
+  // ── Permisos por defecto del grupo ────────────────────────────────
+
+  /** Abre el modal de permisos base del grupo */
+  openGroupPerms() {
+    const g = this.selected();
+    if (!g) return;
+    const current = g.defaultPermissions ?? [];
+    this.groupPermsForm = {};
+    ALL_PERMISSIONS.forEach(p => { this.groupPermsForm[p] = current.includes(p); });
+    this.showGroupPermsModal.set(true);
+  }
+
+  /** Guarda los permisos base del grupo */
+  saveGroupPerms() {
+    const g = this.selected();
+    if (!g) return;
+    const active = ALL_PERMISSIONS.filter(p => this.groupPermsForm[p]);
+    const idx = GROUPS.findIndex(x => x.id === g.id);
+    if (idx !== -1) GROUPS[idx].defaultPermissions = active;
+    this.loadGroups();
+    const updated = this.groups().find(x => x.id === g.id);
+    this.selected.set(updated ?? null);
+    this.showGroupPermsModal.set(false);
+    this.toast('success', 'Permisos del grupo guardados',
+      `Se actualizaron los permisos base de "${g.nombre}".`);
+  }
+
+  /** Cuenta de permisos activos en groupPermsForm */
+  groupPermsActiveCount(): number {
+    return ALL_PERMISSIONS.filter(p => this.groupPermsForm[p]).length;
   }
 
   // ── Navegación ────────────────────────────────────────────────────

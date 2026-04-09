@@ -112,10 +112,7 @@ export class KanbanComponent implements OnInit {
     const g    = this.group();
     const user = this.authSvc.getUser();
     if (!g || !user) return;
-    const list = this.permsSvc.hasPermission('tickets_view')
-      ? this.ticketSvc.getByGroup(g.id)
-      : this.ticketSvc.getByGroupAndUser(g.id, user.id);
-    this.tickets.set([...list]);
+    this.tickets.set([...this.ticketSvc.getForUser(g.id, user.id)]);
   }
 
   colTickets(status: TicketStatus): Ticket[] {

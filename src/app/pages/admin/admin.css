@@ -698,8 +698,9 @@
 }
 
 :host ::ng-deep .adm-dialog .p-dialog-title {
-    font-family: 'Playfair Display', serif !important;
+    font-family: 'DM Sans', sans-serif !important;
     font-size: 1.1rem !important;
+    font-weight: 700 !important;
     color: #f0f0ff !important;
 }
 

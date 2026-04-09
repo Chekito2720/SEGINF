@@ -193,8 +193,9 @@
     border: 1px solid #7c6af7 !important;
     color: #f0f0ff !important;
     border-radius: 8px !important;
-    font-family: 'Playfair Display', serif !important;
+    font-family: 'DM Sans', sans-serif !important;
     font-size: 1.4rem !important;
+    font-weight: 700 !important;
     padding: .5rem .875rem !important;
 }
 
