@@ -33,7 +33,7 @@ export class SidebarComponent {
     { label: 'Mi Cuenta', icon: 'pi-user',           route: '/home/profile', permission: 'user_view',   activeFor: ['/home/profile']     },
     { label: 'Grupos',    icon: 'pi-users',          route: '/home/groups',  permission: 'groups_view'                                    },
     { label: 'Usuarios',  icon: 'pi-id-card',        route: '/home/user',    permission: 'users_view'                                     },
-    { label: 'Admin',     icon: 'pi-shield',         route: '/home/admin',   permission: 'users_edit'                                     },
+    { label: 'Admin',     icon: 'pi-shield',         route: '/home/admin',   superadminOnly: true                                         },
   ];
 
   constructor(

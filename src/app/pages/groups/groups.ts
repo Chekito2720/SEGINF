@@ -48,12 +48,10 @@ export class GroupsComponent implements OnInit {
   showRemoveConfirm = signal(false);
   memberToRemove    = signal<GroupMember | null>(null);
 
-  showUserPermsModal  = signal(false);
-  showGroupPermsModal = signal(false);
-  permsUser           = signal<GroupMember | null>(null);
+  showUserPermsModal = signal(false);
+  permsUser          = signal<GroupMember | null>(null);
 
-  permsForm:      Partial<Record<Permission, boolean>> = {};
-  groupPermsForm: Partial<Record<Permission, boolean>> = {};
+  permsForm: Partial<Record<Permission, boolean>> = {};
 
   permCategories = PERM_CATEGORIES;
   permLabels     = PERM_LABELS;
@@ -305,37 +303,6 @@ export class GroupsComponent implements OnInit {
       },
       error: (err) => this.toast('error', 'Error', err?.error?.message ?? 'No se pudo restablecer.'),
     });
-  }
-
-  // ── Permisos por defecto del grupo ────────────────────────────────
-  openGroupPerms() {
-    const g = this.selected();
-    if (!g) return;
-    const current = g.defaultPermissions ?? [];
-    this.groupPermsForm = {};
-    ALL_PERMISSIONS.forEach(p => { this.groupPermsForm[p] = current.includes(p); });
-    this.showGroupPermsModal.set(true);
-  }
-
-  saveGroupPerms() {
-    const g = this.selected();
-    if (!g) return;
-    const active = ALL_PERMISSIONS.filter(p => this.groupPermsForm[p]);
-    this.groupSvc.updateGroupDefaultPermissions(g.id, active).subscribe({
-      next: () => {
-        const updated: ManagedGroup = { ...g, defaultPermissions: active };
-        this.groups.update(list => list.map(x => x.id === g.id ? updated : x));
-        this.selected.set(updated);
-        this.showGroupPermsModal.set(false);
-        this.toast('success', 'Permisos del grupo guardados',
-          `Se actualizaron los permisos base de "${g.nombre}".`);
-      },
-      error: (err) => this.toast('error', 'Error', err?.error?.message ?? 'No se pudo actualizar.'),
-    });
-  }
-
-  groupPermsActiveCount(): number {
-    return ALL_PERMISSIONS.filter(p => this.groupPermsForm[p]).length;
   }
 
   // ── Helpers ───────────────────────────────────────────────────────

@@ -49,6 +49,8 @@ export class TicketDetailComponent implements OnInit {
   group   = signal<AppGroup | null>(null);
   loading = signal(false);
 
+  activePriorityExt = signal<TicketPriorityExtended>('normal');
+
   editTitle  = signal(false);
   editDesc   = signal(false);
   draftTitle = '';
@@ -99,14 +101,27 @@ export class TicketDetailComponent implements OnInit {
     const cached = this.ticketSvc.getById(id);
     if (cached) {
       this.ticket.set(cached);
+      this.activePriorityExt.set(this.baseToExt(cached.priority));
       this.loading.set(false);
       this._loadActivity(id);
     } else {
       this.ticketSvc.fetchById(id).subscribe({
-        next:  t => { this.ticket.set(t); this.loading.set(false); this._loadActivity(id); },
+        next: t => {
+          this.ticket.set(t);
+          this.activePriorityExt.set(this.baseToExt(t.priority));
+          this.loading.set(false);
+          this._loadActivity(id);
+        },
         error: () => { this.loading.set(false); this.router.navigate(['/home']); },
       });
     }
+  }
+
+  private baseToExt(base: string): TicketPriorityExtended {
+    const map: Record<string, TicketPriorityExtended> = {
+      baja:'baja', media:'normal', alta:'alta', critica:'critica',
+    };
+    return map[base] ?? 'normal';
   }
 
   private _loadActivity(id: string) {
@@ -171,7 +186,11 @@ export class TicketDetailComponent implements OnInit {
     const rank = PRIORITY_EXTENDED_META[pExt].rank;
     const base = rank <= 2 ? 'baja' : rank <= 3 ? 'media' : rank <= 4 ? 'alta' : 'critica';
     this.ticketSvc.update(t.id, { priority: base }).subscribe({
-      next: updated => { this.ticket.set(updated); this.toast(`Prioridad → ${pExt}`); },
+      next: updated => {
+        this.ticket.set(updated);
+        this.activePriorityExt.set(pExt);
+        this.toast(`Prioridad → ${PRIORITY_EXTENDED_META[pExt].label}`);
+      },
       error: () => {},
     });
   }
@@ -187,8 +206,9 @@ export class TicketDetailComponent implements OnInit {
 
   changeDueDate(date: string) {
     const t = this.ticket();
-    if (!t) return;
-    this.ticketSvc.update(t.id, { dueDate: date }).subscribe({
+    if (!t || !date) return;
+    const isoDate = new Date(date + 'T00:00:00.000Z').toISOString();
+    this.ticketSvc.update(t.id, { dueDate: isoDate }).subscribe({
       next: updated => { this.ticket.set(updated); this.toast('Fecha límite actualizada'); },
       error: () => {},
     });
@@ -228,6 +248,8 @@ export class TicketDetailComponent implements OnInit {
   }
 
   priorityMeta(p: string) {
+    // Si ya es una clave extendida úsala directamente; si es base (baja/media/alta/critica) conviértela
+    if (p in PRIORITY_EXTENDED_META) return PRIORITY_EXTENDED_META[p as TicketPriorityExtended];
     const map: Record<string, TicketPriorityExtended> = {
       baja:'baja', media:'normal', alta:'alta', critica:'critica',
     };

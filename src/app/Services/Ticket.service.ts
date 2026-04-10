@@ -84,23 +84,23 @@ export class TicketService {
   }
 
   fetchById(id: string): Observable<Ticket> {
-    return this.http.get<ApiResponse<unknown>>(`${GW}/tickets/${id}`).pipe(
-      map(r => mapTicket(r.data)),
+    return this.http.get<ApiResponse<unknown[]>>(`${GW}/tickets/${id}`).pipe(
+      map(r => mapTicket((r.data as unknown[])[0])),
     );
   }
 
   add(dto: CreateTicketDto): Observable<Ticket> {
     const body = toApiBody(dto as unknown as Record<string, unknown>);
-    return this.http.post<ApiResponse<unknown>>(`${GW}/tickets`, body).pipe(
-      map(r => mapTicket(r.data)),
+    return this.http.post<ApiResponse<unknown[]>>(`${GW}/tickets`, body).pipe(
+      map(r => mapTicket((r.data as unknown[])[0])),
       tap(t => this._tickets.update(list => [...list, t])),
     );
   }
 
   update(id: string, changes: UpdateTicketDto): Observable<Ticket> {
     const body = toApiBody(changes as Record<string, unknown>);
-    return this.http.patch<ApiResponse<unknown>>(`${GW}/tickets/${id}`, body).pipe(
-      map(r => mapTicket(r.data)),
+    return this.http.patch<ApiResponse<unknown[]>>(`${GW}/tickets/${id}`, body).pipe(
+      map(r => mapTicket((r.data as unknown[])[0])),
       tap(updated => this._tickets.update(list =>
         list.map(t => t.id === id ? updated : t)
       )),
@@ -115,8 +115,8 @@ export class TicketService {
   }
 
   changeStatus(id: string, status: TicketStatus): Observable<Ticket> {
-    return this.http.patch<ApiResponse<unknown>>(`${GW}/tickets/${id}/state`, { estado: status }).pipe(
-      map(r => mapTicket(r.data)),
+    return this.http.patch<ApiResponse<unknown[]>>(`${GW}/tickets/${id}/state`, { estado: status }).pipe(
+      map(r => mapTicket((r.data as unknown[])[0])),
       tap(updated => this._tickets.update(list =>
         list.map(t => t.id === id ? updated : t)
       )),

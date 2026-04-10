@@ -20,9 +20,6 @@
                 <span class="adm-subtitle">Panel exclusivo · Superadmin</span>
             </div>
         </div>
-        <button class="adm-btn accent" (click)="openCreate()">
-            <i class="pi pi-user-plus"></i> Nuevo usuario
-        </button>
     </header>
 
     <div class="adm-layout">
@@ -112,7 +109,7 @@
                     <div class="adm-perms-title">
                         <i class="pi pi-key"></i>
                         <span>Permisos</span>
-                        <span class="adm-perm-count">{{ draftCount }} / {{ 21 }}</span>
+                        <span class="adm-perm-count">{{ draftCount }} / {{ 22 }}</span>
                     </div>
 
                     <!-- Aplicar perfil rápido -->
@@ -176,91 +173,6 @@
 </div>
 
 }<!-- /superadmin guard -->
-
-<!-- ══ MODAL: Crear usuario ════════════════════════════════════════ -->
-<p-dialog header="Nuevo usuario" [(visible)]="showCreate" [modal]="true" [closable]="true" styleClass="adm-dialog">
-    <div class="adm-form">
-
-        <div class="adm-form-row">
-            <div class="adm-form-field">
-                <label>Nombre completo *</label>
-                <input pInputText [(ngModel)]="userForm.fullName" class="adm-input" placeholder="Nombre completo" />
-            </div>
-            <div class="adm-form-field">
-                <label>Usuario</label>
-                <input pInputText [(ngModel)]="userForm.username" class="adm-input" placeholder="@usuario" />
-            </div>
-        </div>
-
-        <div class="adm-form-row">
-            <div class="adm-form-field">
-                <label>Correo *</label>
-                <input pInputText [(ngModel)]="userForm.email" type="email" class="adm-input"
-                    placeholder="correo@miapp.com" />
-            </div>
-            <div class="adm-form-field">
-                <label>Contraseña *</label>
-                <input pInputText [(ngModel)]="userForm.password" type="password" class="adm-input"
-                    placeholder="Contraseña" />
-            </div>
-        </div>
-
-        <div class="adm-form-row">
-            <div class="adm-form-field">
-                <label>Teléfono</label>
-                <input pInputText [(ngModel)]="userForm.phone" type="tel" class="adm-input" placeholder="+503..." />
-            </div>
-            <div class="adm-form-field">
-                <label>Fecha de nacimiento</label>
-                <input pInputText [(ngModel)]="userForm.birthDate" type="date" class="adm-input" />
-            </div>
-        </div>
-
-        <div class="adm-form-field">
-            <label>Dirección</label>
-            <input pInputText [(ngModel)]="userForm.address" class="adm-input" placeholder="Calle, ciudad..." />
-        </div>
-
-        <!-- Permisos iniciales -->
-        <div class="adm-form-field">
-            <label>Permisos iniciales</label>
-            <div class="adm-profile-btns" style="margin-bottom:.5rem">
-                @for (pk of allSets; track pk) {
-                <button class="adm-profile-pill" (click)="applySet(pk)">
-                    {{ setNames[pk] ?? pk }}
-                </button>
-                }
-            </div>
-            <div class="adm-perm-categories compact">
-                @for (pg of permGroups; track pg.label) {
-                <div class="adm-perm-cat">
-                    <div class="adm-cat-head" [style.--cat]="pg.color">
-                        <i class="pi" [ngClass]="pg.icon"></i> {{ pg.label }}
-                    </div>
-                    <div class="adm-perm-grid">
-                        @for (p of pg.perms; track p) {
-                        <button class="adm-perm-chip" [class.active]="hasPerm(p)" [style.--cat]="pg.color"
-                            (click)="togglePerm(p)">
-                            <span class="adm-perm-dot"></span>{{ p }}
-                        </button>
-                        }
-                    </div>
-                </div>
-                }
-            </div>
-        </div>
-
-        @if (formError) {
-        <div class="adm-form-error"><i class="pi pi-exclamation-circle"></i> {{ formError }}</div>
-        }
-    </div>
-    <ng-template pTemplate="footer">
-        <button class="adm-btn" (click)="showCreate.set(false)">Cancelar</button>
-        <button class="adm-btn accent" (click)="saveCreate()">
-            <i class="pi pi-check"></i> Crear usuario
-        </button>
-    </ng-template>
-</p-dialog>
 
 <!-- ══ MODAL: Editar usuario ═══════════════════════════════════════ -->
 <p-dialog header="Editar usuario" [(visible)]="showEdit" [modal]="true" [closable]="true" styleClass="adm-dialog">

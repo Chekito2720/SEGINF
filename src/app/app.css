@@ -97,6 +97,47 @@ body {
     border-color: var(--border) !important;
 }
 
+/* ── PrimeNG Select overlay global (appendTo="body") ───────────────── */
+.dlg-select.p-select-overlay,
+.gm-select.p-select-overlay,
+.p-select-overlay.dlg-select,
+.p-select-overlay.gm-select {
+    background: #141627 !important;
+    border: 1px solid #2a2d4a !important;
+    border-radius: 8px !important;
+    box-shadow: 0 8px 32px rgba(0,0,0,.6) !important;
+    min-width: unset !important;
+}
+
+.dlg-select.p-select-overlay .p-select-list-container,
+.gm-select.p-select-overlay .p-select-list-container {
+    background: #141627 !important;
+    border-radius: 8px !important;
+    max-height: 220px !important;
+    overflow-y: auto !important;
+}
+
+.dlg-select.p-select-overlay .p-select-option,
+.gm-select.p-select-overlay .p-select-option {
+    color: #c0c2e0 !important;
+    font-family: 'DM Sans', sans-serif !important;
+    font-size: .875rem !important;
+    padding: .55rem .875rem !important;
+    transition: background .12s !important;
+}
+
+.dlg-select.p-select-overlay .p-select-option:hover,
+.gm-select.p-select-overlay .p-select-option:hover {
+    background: rgba(124,106,247,.1) !important;
+    color: #f0f0ff !important;
+}
+
+.dlg-select.p-select-overlay .p-select-option.p-selected,
+.gm-select.p-select-overlay .p-select-option.p-selected {
+    background: rgba(124,106,247,.18) !important;
+    color: #7c6af7 !important;
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar {
     width: 6px;

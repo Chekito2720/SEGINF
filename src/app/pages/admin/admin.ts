@@ -32,7 +32,7 @@ export const PERM_GROUPS: PermGroup[] = [
   },
   {
     label: 'Tickets',  icon: 'pi-ticket',  color: '#4ade80',
-    perms: ['tickets_view','ticket_view','tickets_edit','ticket_edit','ticket_delete','tickets_add','ticket_add'],
+    perms: ['tickets_view','ticket_view','tickets_edit','ticket_edit','ticket_delete','tickets_add','ticket_add','ticket_state'],
   },
 ];
 
@@ -76,14 +76,10 @@ export class AdminComponent implements OnInit {
     );
   });
 
-  showCreate        = signal(false);
   showEdit          = signal(false);
   showDeleteConfirm = signal(false);
 
-  emptyForm(): UserForm {
-    return { fullName:'', username:'', email:'', password:'', phone:'', birthDate:'', address:'' };
-  }
-  userForm: UserForm = this.emptyForm();
+  userForm: UserForm = { fullName:'', username:'', email:'', password:'', phone:'', birthDate:'', address:'' };
   formError = '';
 
   draftPerms = signal<Set<Permission>>(new Set());
@@ -113,8 +109,14 @@ export class AdminComponent implements OnInit {
   loadUsers() {
     this.loading.set(true);
     this.userSvc.loadUsers().subscribe({
-      next:  users => { this.users.set(users); this.loading.set(false); },
-      error: ()    => this.loading.set(false),
+      next: users => {
+        this.users.set(users);
+        this.loading.set(false);
+        const currentId = this.authSvc.getUser()?.id;
+        const me = currentId ? users.find(u => u.id === currentId) : null;
+        if (me) this.selectUser(me);
+      },
+      error: () => this.loading.set(false),
     });
   }
 
@@ -166,44 +168,6 @@ export class AdminComponent implements OnInit {
   discardPermissions() {
     const u = this.selected();
     if (u) this.draftPerms.set(new Set(u.permissions ?? []));
-  }
-
-  // ── Crear usuario ─────────────────────────────────────────────────
-  openCreate() {
-    this.userForm  = this.emptyForm();
-    this.formError = '';
-    this.draftPerms.set(new Set(PERMISSION_SETS['basico']));
-    this.showCreate.set(true);
-  }
-
-  saveCreate() {
-    this.formError = '';
-    if (!this.userForm.fullName.trim()) { this.formError = 'El nombre es obligatorio.';     return; }
-    if (!this.userForm.email.trim())    { this.formError = 'El correo es obligatorio.';      return; }
-    if (!this.userForm.password.trim()) { this.formError = 'La contraseña es obligatoria.'; return; }
-
-    const dto = {
-      fullName:  this.userForm.fullName.trim(),
-      username:  this.userForm.username.trim() || this.userForm.email.split('@')[0],
-      email:     this.userForm.email.trim(),
-      password:  this.userForm.password,
-      phone:     this.userForm.phone.trim()   || undefined,
-      birthDate: this.userForm.birthDate       || undefined,
-      address:   this.userForm.address.trim() || undefined,
-    };
-
-    this.userSvc.createUser(dto).subscribe({
-      next: created => {
-        const perms = [...this.draftPerms()] as Permission[];
-        this.userSvc.updateUserPermissions(created.id, perms).subscribe();
-        const withPerms = { ...created, permissions: perms };
-        this.users.update(list => [...list, withPerms]);
-        this.showCreate.set(false);
-        this.selectUser(withPerms);
-        this.toast('success', 'Usuario creado', `${created.fullName} ha sido creado.`);
-      },
-      error: (err) => { this.formError = err?.error?.message ?? 'Error al crear usuario.'; },
-    });
   }
 
   // ── Editar usuario ────────────────────────────────────────────────

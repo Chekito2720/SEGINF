@@ -194,15 +194,16 @@
             <!-- Priority (7 niveles en chino) -->
             <div class="prop-card">
                 <span class="prop-label"><i class="pi pi-flag"></i> Prioridad</span>
-                <div class="priority-current" [style.color]="priorityMeta(t.priority).color"
-                    [style.background]="priorityMeta(t.priority).bg">
-                    <i class="pi" [ngClass]="priorityMeta(t.priority).icon"></i>
-                    <span class="prio-label">{{ priorityMeta(t.priority).label }}</span>
+                <div class="priority-current" [style.color]="priorityMeta(activePriorityExt()).color"
+                    [style.background]="priorityMeta(activePriorityExt()).bg">
+                    <i class="pi" [ngClass]="priorityMeta(activePriorityExt()).icon"></i>
+                    <span class="prio-label">{{ priorityMeta(activePriorityExt()).label }}</span>
                 </div>
                 @if (canEditFields) {
                 <div class="priority-grid">
                     @for (p of priorityOptions; track p.value) {
-                    <button class="prio-btn" [style.--pc]="p.color" [pTooltip]="p.label" tooltipPosition="top"
+                    <button class="prio-btn" [class.active]="activePriorityExt() === p.value"
+                        [style.--pc]="p.color" [pTooltip]="p.label" tooltipPosition="top"
                         (click)="changePriority(p.value)">
                         <i class="pi" [ngClass]="p.icon"></i>
                         <span>{{ p.label }}</span>
@@ -249,7 +250,7 @@
                     <div class="date-item">
                         <span class="date-lbl">Límite</span>
                         @if (canEditFields) {
-                        <input pInputText type="date" class="date-input" [value]="t.dueDate ?? ''"
+                        <input pInputText type="date" class="date-input" [value]="t.dueDate?.slice(0,10) ?? ''"
                             (change)="changeDueDate(($any($event.target)).value)" />
                         } @else {
                         <span class="date-val" [class.overdue]="isOverdue(t.dueDate)">
