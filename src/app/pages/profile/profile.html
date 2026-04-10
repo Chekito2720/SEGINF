@@ -62,13 +62,13 @@
             <!-- Permisos -->
             <div class="pf-section">
                 <span class="pf-section-label"><i class="pi pi-shield"></i> Permisos</span>
-                <span class="pf-perm-count">{{ u.permissions.length }} permisos activos</span>
+                <span class="pf-perm-count">{{ (u.permissions ?? []).length }} permisos activos</span>
                 <div class="pf-perms-wrap">
-                    @for (p of u.permissions.slice(0, 8); track p) {
+                    @for (p of (u.permissions ?? []).slice(0, 8); track p) {
                     <span class="perm-chip">{{ p }}</span>
                     }
-                    @if (u.permissions.length > 8) {
-                    <span class="perm-chip more">+{{ u.permissions.length - 8 }} más</span>
+                    @if ((u.permissions ?? []).length > 8) {
+                    <span class="perm-chip more">+{{ (u.permissions ?? []).length - 8 }} más</span>
                     }
                 </div>
             </div>

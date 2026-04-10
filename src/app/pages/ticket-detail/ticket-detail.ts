@@ -12,16 +12,17 @@ import { DividerModule }   from 'primeng/divider';
 import { MessageService }  from 'primeng/api';
 import { AuthService }        from '../../Services/Auth.service';
 import { TicketService }      from '../../Services/Ticket.service';
+import { GroupService }       from '../../Services/Group.service';
 import { PermissionsService } from '../../Services/Permissions.service';
 import {
   Ticket, TicketStatus, HistoryAction,
-  TicketPriorityExtended, PRIORITY_EXTENDED_META, USERS, AppGroup,
+  TicketPriorityExtended, PRIORITY_EXTENDED_META, AppGroup,
 } from '../../models/Auth.model';
 
 interface ActivityEntry {
   kind:      'comment' | 'history';
-  id:        number;
-  userId:    number;
+  id:        string;
+  userId:    string;
   createdAt: string;
   text?:     string;
   action?:   HistoryAction;
@@ -44,8 +45,9 @@ interface ActivityEntry {
 })
 export class TicketDetailComponent implements OnInit {
 
-  ticket = signal<Ticket | null>(null);
-  group  = signal<AppGroup | null>(null);
+  ticket  = signal<Ticket | null>(null);
+  group   = signal<AppGroup | null>(null);
+  loading = signal(false);
 
   editTitle  = signal(false);
   editDesc   = signal(false);
@@ -72,7 +74,9 @@ export class TicketDetailComponent implements OnInit {
     { label:'Bloqueado',   value:'bloqueado',   accent:'#f87171' },
   ];
 
-  memberOptions = USERS.map(u => ({ label: u.fullName, value: u.id }));
+  memberOptions = computed(() =>
+    this.groupSvc.getGroupMembers().map(m => ({ label: m.fullName, value: m.id }))
+  );
 
   constructor(
     private route:     ActivatedRoute,
@@ -80,17 +84,34 @@ export class TicketDetailComponent implements OnInit {
     public  authSvc:   AuthService,
     public  permsSvc:  PermissionsService,
     private ticketSvc: TicketService,
+    private groupSvc:  GroupService,
     private msgSvc:    MessageService,
   ) {}
 
   ngOnInit() {
     this.group.set(this.authSvc.getGroup());
-    const id = Number(this.route.snapshot.paramMap.get('id'));
+    const id = this.route.snapshot.paramMap.get('id') ?? '';
     this.loadTicket(id);
   }
 
-  loadTicket(id: number) {
-    this.ticket.set(this.ticketSvc.getById(id) ?? null);
+  loadTicket(id: string) {
+    this.loading.set(true);
+    const cached = this.ticketSvc.getById(id);
+    if (cached) {
+      this.ticket.set(cached);
+      this.loading.set(false);
+      this._loadActivity(id);
+    } else {
+      this.ticketSvc.fetchById(id).subscribe({
+        next:  t => { this.ticket.set(t); this.loading.set(false); this._loadActivity(id); },
+        error: () => { this.loading.set(false); this.router.navigate(['/home']); },
+      });
+    }
+  }
+
+  private _loadActivity(id: string) {
+    this.ticketSvc.loadComments(id).subscribe();
+    this.ticketSvc.loadHistory(id).subscribe();
   }
 
   get currentUser()     { return this.authSvc.getUser(); }
@@ -118,8 +139,10 @@ export class TicketDetailComponent implements OnInit {
   saveTitle() {
     const t = this.ticket();
     if (!t || !this.draftTitle.trim()) { this.editTitle.set(false); return; }
-    this.ticketSvc.update(t.id, { titulo: this.draftTitle.trim() }, this.currentUser?.id);
-    this.loadTicket(t.id); this.editTitle.set(false); this.toast('Título actualizado');
+    this.ticketSvc.update(t.id, { titulo: this.draftTitle.trim() }).subscribe({
+      next:  updated => { this.ticket.set(updated); this.editTitle.set(false); this.toast('Título actualizado'); },
+      error: () => this.editTitle.set(false),
+    });
   }
 
   startEditDesc() { this.draftDesc = this.ticket()?.descripcion ?? ''; this.editDesc.set(true); }
@@ -127,16 +150,19 @@ export class TicketDetailComponent implements OnInit {
   saveDesc() {
     const t = this.ticket();
     if (!t) { this.editDesc.set(false); return; }
-    this.ticketSvc.update(t.id, { descripcion: this.draftDesc }, this.currentUser?.id);
-    this.loadTicket(t.id); this.editDesc.set(false); this.toast('Descripción actualizada');
+    this.ticketSvc.update(t.id, { descripcion: this.draftDesc }).subscribe({
+      next:  updated => { this.ticket.set(updated); this.editDesc.set(false); this.toast('Descripción actualizada'); },
+      error: () => this.editDesc.set(false),
+    });
   }
 
   changeStatus(status: TicketStatus) {
     const t = this.ticket();
     if (!t) return;
-    this.ticketSvc.changeStatus(t.id, status, this.currentUser?.id);
-    this.loadTicket(t.id);
-    this.toast(`Estado → ${this.statusLabel(status)}`);
+    this.ticketSvc.changeStatus(t.id, status).subscribe({
+      next: updated => { this.ticket.set(updated); this.toast(`Estado → ${this.statusLabel(status)}`); },
+      error: () => {},
+    });
   }
 
   changePriority(pExt: TicketPriorityExtended) {
@@ -144,43 +170,53 @@ export class TicketDetailComponent implements OnInit {
     if (!t) return;
     const rank = PRIORITY_EXTENDED_META[pExt].rank;
     const base = rank <= 2 ? 'baja' : rank <= 3 ? 'media' : rank <= 4 ? 'alta' : 'critica';
-    this.ticketSvc.update(t.id, { priority: base }, this.currentUser?.id);
-    this.loadTicket(t.id);
-    this.toast(`Prioridad → ${pExt}`);
+    this.ticketSvc.update(t.id, { priority: base }).subscribe({
+      next: updated => { this.ticket.set(updated); this.toast(`Prioridad → ${pExt}`); },
+      error: () => {},
+    });
   }
 
-  reassign(userId: number) {
+  reassign(userId: string) {
     const t = this.ticket();
     if (!t) return;
-    this.ticketSvc.update(t.id, { assignedToId: userId }, this.currentUser?.id);
-    this.loadTicket(t.id);
-    this.toast(`Reasignado a ${this.userName(userId)}`);
+    this.ticketSvc.update(t.id, { assignedToId: userId }).subscribe({
+      next: updated => { this.ticket.set(updated); this.toast(`Reasignado a ${this.userName(userId)}`); },
+      error: () => {},
+    });
   }
 
   changeDueDate(date: string) {
     const t = this.ticket();
     if (!t) return;
-    this.ticketSvc.update(t.id, { dueDate: date }, this.currentUser?.id);
-    this.loadTicket(t.id);
-    this.toast('Fecha límite actualizada');
+    this.ticketSvc.update(t.id, { dueDate: date }).subscribe({
+      next: updated => { this.ticket.set(updated); this.toast('Fecha límite actualizada'); },
+      error: () => {},
+    });
   }
 
-  async addComment() {
+  addComment() {
     const t = this.ticket();
-    const user = this.currentUser;
-    if (!t || !user || !this.newComment.trim()) return;
+    if (!t || !this.newComment.trim()) return;
     this.submitting.set(true);
-    await new Promise(r => setTimeout(r, 250));
-    this.ticketSvc.addComment(t.id, user.id, this.newComment.trim());
-    this.newComment = '';
-    this.submitting.set(false);
-    this.loadTicket(t.id);
+    this.ticketSvc.addComment(t.id, this.newComment.trim()).subscribe({
+      next:  () => { this.newComment = ''; this.submitting.set(false); },
+      error: () => this.submitting.set(false),
+    });
   }
 
-  userName(id: number): string    { return USERS.find(u => u.id === id)?.fullName ?? '—'; }
-  userInitial(id: number): string { return this.userName(id).charAt(0).toUpperCase(); }
-  userColor(id: number): string   {
-    return ['#7c6af7','#38bdf8','#4ade80','#f59e0b','#f87171'][id % 5];
+  // ── Helpers ────────────────────────────────────────────────────────
+  userName(id: string): string {
+    const member = this.groupSvc.getGroupMembers().find(m => m.id === id);
+    if (member) return member.fullName;
+    if (id === this.authSvc.getUser()?.id) return this.authSvc.getUser()?.fullName ?? '—';
+    return '—';
+  }
+
+  userInitial(id: string): string { return this.userName(id).charAt(0).toUpperCase(); }
+
+  userColor(id: string): string {
+    const n = [...id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 0);
+    return ['#7c6af7','#38bdf8','#4ade80','#f59e0b','#f87171'][n % 5];
   }
 
   statusLabel(s: TicketStatus): string {
@@ -195,15 +231,15 @@ export class TicketDetailComponent implements OnInit {
     const map: Record<string, TicketPriorityExtended> = {
       baja:'baja', media:'normal', alta:'alta', critica:'critica',
     };
-    return PRIORITY_EXTENDED_META[map[p] ?? '普通'];
+    return PRIORITY_EXTENDED_META[map[p] ?? 'normal'];
   }
 
   historyIcon(action: HistoryAction): string {
     const map: Record<HistoryAction, string> = {
-      created:'pi-plus-circle', status_changed:'pi-refresh',
-      priority_changed:'pi-flag', assigned:'pi-user-edit',
-      title_changed:'pi-pencil', description_changed:'pi-align-left',
-      duedate_changed:'pi-calendar', comment_added:'pi-comment',
+      created:'pi-plus-circle',       status_changed:'pi-refresh',
+      priority_changed:'pi-flag',     assigned:'pi-user-edit',
+      title_changed:'pi-pencil',      description_changed:'pi-align-left',
+      duedate_changed:'pi-calendar',  comment_added:'pi-comment',
     };
     return map[action] ?? 'pi-circle';
   }

@@ -9,13 +9,11 @@ import { ToastModule }     from 'primeng/toast';
 import { TooltipModule }   from 'primeng/tooltip';
 import { DividerModule }   from 'primeng/divider';
 import { MessageService }  from 'primeng/api';
-import { AuthService }        from '../../Services/Auth.service';
-import { PermissionsService } from '../../Services/Permissions.service';
-import {
-  AppUser, Permission, USERS, GROUPS, PERMISSION_SETS,
-} from '../../models/Auth.model';
+import { AuthService }  from '../../Services/Auth.service';
+import { UserService }  from '../../Services/User.service';
+import { GroupService } from '../../Services/Group.service';
+import { AppUser, Permission, PERMISSION_SETS } from '../../models/Auth.model';
 
-// ── Agrupación visual de permisos ──────────────────────────────────────────
 export interface PermGroup {
   label: string;
   icon:  string;
@@ -25,28 +23,19 @@ export interface PermGroup {
 
 export const PERM_GROUPS: PermGroup[] = [
   {
-    label: 'Grupos',
-    icon:  'pi-users',
-    color: '#7c6af7',
+    label: 'Grupos',   icon: 'pi-users',   color: '#7c6af7',
     perms: ['groups_view','group_view','groups_edit','group_edit','groups_delete','group_delete','groups_add','group_add'],
   },
   {
-    label: 'Usuarios',
-    icon:  'pi-id-card',
-    color: '#38bdf8',
+    label: 'Usuarios', icon: 'pi-id-card', color: '#38bdf8',
     perms: ['users_view','user_view','users_edit','user_edit','user_delete','user_add'],
   },
   {
-    label: 'Tickets',
-    icon:  'pi-ticket',
-    color: '#4ade80',
+    label: 'Tickets',  icon: 'pi-ticket',  color: '#4ade80',
     perms: ['tickets_view','ticket_view','tickets_edit','ticket_edit','ticket_delete','tickets_add','ticket_add'],
   },
 ];
 
-export const ALL_PERMISSIONS: Permission[] = PERM_GROUPS.flatMap(g => g.perms);
-
-// ── Form para crear/editar usuario ─────────────────────────────────────────
 export interface UserForm {
   fullName:  string;
   username:  string;
@@ -71,17 +60,11 @@ export interface UserForm {
 })
 export class AdminComponent implements OnInit {
 
-  // ── Guard: solo superadmin ─────────────────────────────────────────
   isSuperAdmin = signal(false);
-
-  // ── Lista reactiva de usuarios ─────────────────────────────────────
-  users = signal<AppUser[]>([]);
-
-  // ── Usuario seleccionado (panel derecho) ───────────────────────────
-  selected = signal<AppUser | null>(null);
-
-  // ── Búsqueda ───────────────────────────────────────────────────────
-  search = signal('');
+  users        = signal<AppUser[]>([]);
+  selected     = signal<AppUser | null>(null);
+  search       = signal('');
+  loading      = signal(false);
 
   filteredUsers = computed(() => {
     const q = this.search().toLowerCase().trim();
@@ -93,67 +76,68 @@ export class AdminComponent implements OnInit {
     );
   });
 
-  // ── Modals ─────────────────────────────────────────────────────────
-  showCreate       = signal(false);
-  showEdit         = signal(false);
+  showCreate        = signal(false);
+  showEdit          = signal(false);
   showDeleteConfirm = signal(false);
 
-  // ── Forms ──────────────────────────────────────────────────────────
   emptyForm(): UserForm {
     return { fullName:'', username:'', email:'', password:'', phone:'', birthDate:'', address:'' };
   }
   userForm: UserForm = this.emptyForm();
   formError = '';
 
-  // ── Permisos en edición ────────────────────────────────────────────
   draftPerms = signal<Set<Permission>>(new Set());
 
-  // ── Constantes para template ───────────────────────────────────────
-  permGroups    = PERM_GROUPS;
-  allSets = Object.keys(PERMISSION_SETS);
-  setNames: Record<string, string> = {
-    superadmin: 'Superadmin',
-    avanzado:   'Avanzado',
-    basico:     'Básico',
-  };
+  permGroups = PERM_GROUPS;
+  allSets    = Object.keys(PERMISSION_SETS);
+  setNames: Record<string, string> = { superadmin:'Superadmin', avanzado:'Avanzado', basico:'Básico' };
 
   constructor(
     private authSvc:  AuthService,
-    private permsSvc: PermissionsService,
+    private userSvc:  UserService,
+    private groupSvc: GroupService,
     private router:   Router,
     private msgSvc:   MessageService,
   ) {}
 
   ngOnInit() {
-    const payload = this.authSvc.getPayload();
+    const payload    = this.authSvc.getPayload();
     const superPerms = PERMISSION_SETS['superadmin'];
-    const isSuper = !!payload &&
-      superPerms.every(p => payload.permissions.includes(p));
+    const isSuper    = !!payload && Array.isArray(payload.permisos) && superPerms.every(p => payload.permisos.includes(p));
     this.isSuperAdmin.set(isSuper);
 
-    if (!isSuper) {
-      this.router.navigate(['/home']);
-      return;
-    }
+    if (!isSuper) { this.router.navigate(['/home']); return; }
     this.loadUsers();
   }
 
   loadUsers() {
-    this.users.set([...USERS]);
+    this.loading.set(true);
+    this.userSvc.loadUsers().subscribe({
+      next:  users => { this.users.set(users); this.loading.set(false); },
+      error: ()    => this.loading.set(false),
+    });
   }
 
   selectUser(u: AppUser) {
     this.selected.set(u);
-    this.draftPerms.set(new Set(u.permissions));
+    this.draftPerms.set(new Set(u.permissions ?? []));
+    if (!u.permissions) {
+      this.userSvc.getUserPermissions(u.id).subscribe({
+        next: perms => {
+          const updated = { ...u, permissions: perms };
+          this.selected.set(updated);
+          this.draftPerms.set(new Set(perms));
+        },
+        error: () => {},
+      });
+    }
   }
 
-  // ── Perfil rápido ─────────────────────────────────────────────────
   applySet(setKey: string) {
     const perms = PERMISSION_SETS[setKey];
     if (perms) this.draftPerms.set(new Set(perms));
   }
 
-  // ── Toggle individual permission ──────────────────────────────────
   togglePerm(p: Permission) {
     const s = new Set(this.draftPerms());
     s.has(p) ? s.delete(p) : s.add(p);
@@ -162,28 +146,29 @@ export class AdminComponent implements OnInit {
 
   hasPerm(p: Permission): boolean { return this.draftPerms().has(p); }
 
-  // ── Save permissions ──────────────────────────────────────────────
   savePermissions() {
     const u = this.selected();
     if (!u) return;
-    const idx = USERS.findIndex(x => x.id === u.id);
-    if (idx === -1) return;
-    USERS[idx].permissions = [...this.draftPerms()] as Permission[];
-    this.authSvc.refreshToken(u.id);   // re-emite JWT con permisos nuevos
-    this.loadUsers();
-    const updated = USERS[idx];
-    this.selected.set({ ...updated });
-    this.draftPerms.set(new Set(updated.permissions));
-    this.toast('success', 'Permisos guardados', `Permisos de ${u.fullName} actualizados.`);
+    const perms = [...this.draftPerms()] as Permission[];
+    this.userSvc.updateUserPermissions(u.id, perms).subscribe({
+      next: () => {
+        const updated = { ...u, permissions: perms };
+        this.users.update(list => list.map(x => x.id === u.id ? updated : x));
+        this.selected.set(updated);
+        this.draftPerms.set(new Set(perms));
+        if (u.id === this.authSvc.getUser()?.id) this.authSvc.refreshPermissions();
+        this.toast('success', 'Permisos guardados', `Permisos de ${u.fullName} actualizados.`);
+      },
+      error: (err) => this.toast('error', 'Error', err?.error?.message ?? 'No se pudo actualizar.'),
+    });
   }
 
   discardPermissions() {
     const u = this.selected();
-    if (!u) return;
-    this.draftPerms.set(new Set(u.permissions));
+    if (u) this.draftPerms.set(new Set(u.permissions ?? []));
   }
 
-  // ── Create user ───────────────────────────────────────────────────
+  // ── Crear usuario ─────────────────────────────────────────────────
   openCreate() {
     this.userForm  = this.emptyForm();
     this.formError = '';
@@ -193,43 +178,44 @@ export class AdminComponent implements OnInit {
 
   saveCreate() {
     this.formError = '';
-    if (!this.userForm.fullName.trim()) { this.formError = 'El nombre es obligatorio.'; return; }
-    if (!this.userForm.email.trim())    { this.formError = 'El correo es obligatorio.';  return; }
+    if (!this.userForm.fullName.trim()) { this.formError = 'El nombre es obligatorio.';     return; }
+    if (!this.userForm.email.trim())    { this.formError = 'El correo es obligatorio.';      return; }
     if (!this.userForm.password.trim()) { this.formError = 'La contraseña es obligatoria.'; return; }
-    if (USERS.find(u => u.email === this.userForm.email.trim())) {
-      this.formError = 'Ya existe un usuario con ese correo.'; return;
-    }
 
-    const newId = Math.max(...USERS.map(u => u.id)) + 1;
-    const newUser: AppUser = {
-      id:          newId,
-      fullName:    this.userForm.fullName.trim(),
-      username:    this.userForm.username.trim() || this.userForm.email.split('@')[0],
-      email:       this.userForm.email.trim(),
-      password:    this.userForm.password,
-      phone:       this.userForm.phone.trim(),
-      birthDate:   this.userForm.birthDate,
-      address:     this.userForm.address.trim(),
-      permissions: [...this.draftPerms()] as Permission[],
-      groupIds:    [],
+    const dto = {
+      fullName:  this.userForm.fullName.trim(),
+      username:  this.userForm.username.trim() || this.userForm.email.split('@')[0],
+      email:     this.userForm.email.trim(),
+      password:  this.userForm.password,
+      phone:     this.userForm.phone.trim()   || undefined,
+      birthDate: this.userForm.birthDate       || undefined,
+      address:   this.userForm.address.trim() || undefined,
     };
-    USERS.push(newUser);
-    this.loadUsers();
-    this.showCreate.set(false);
-    this.selectUser(newUser);
-    this.toast('success', 'Usuario creado', `${newUser.fullName} ha sido creado.`);
+
+    this.userSvc.createUser(dto).subscribe({
+      next: created => {
+        const perms = [...this.draftPerms()] as Permission[];
+        this.userSvc.updateUserPermissions(created.id, perms).subscribe();
+        const withPerms = { ...created, permissions: perms };
+        this.users.update(list => [...list, withPerms]);
+        this.showCreate.set(false);
+        this.selectUser(withPerms);
+        this.toast('success', 'Usuario creado', `${created.fullName} ha sido creado.`);
+      },
+      error: (err) => { this.formError = err?.error?.message ?? 'Error al crear usuario.'; },
+    });
   }
 
-  // ── Edit user ─────────────────────────────────────────────────────
+  // ── Editar usuario ────────────────────────────────────────────────
   openEdit(u: AppUser) {
     this.userForm = {
       fullName:  u.fullName,
       username:  u.username,
       email:     u.email,
-      password:  u.password,
-      phone:     u.phone,
-      birthDate: u.birthDate,
-      address:   u.address,
+      password:  '',
+      phone:     u.phone     ?? '',
+      birthDate: u.birthDate ?? '',
+      address:   u.address   ?? '',
     };
     this.formError = '';
     this.selected.set(u);
@@ -243,81 +229,89 @@ export class AdminComponent implements OnInit {
     if (!this.userForm.fullName.trim()) { this.formError = 'El nombre es obligatorio.'; return; }
     if (!this.userForm.email.trim())    { this.formError = 'El correo es obligatorio.';  return; }
 
-    const idx = USERS.findIndex(x => x.id === u.id);
-    if (idx === -1) return;
-    const updated: AppUser = {
-      ...USERS[idx],
+    const dto: Record<string, string | undefined> = {
       fullName:  this.userForm.fullName.trim(),
       username:  this.userForm.username.trim(),
       email:     this.userForm.email.trim(),
-      password:  this.userForm.password || USERS[idx].password,
-      phone:     this.userForm.phone.trim(),
-      birthDate: this.userForm.birthDate,
-      address:   this.userForm.address.trim(),
+      phone:     this.userForm.phone.trim()    || undefined,
+      birthDate: this.userForm.birthDate       || undefined,
+      address:   this.userForm.address.trim()  || undefined,
     };
-    USERS[idx] = updated;
-    this.loadUsers();
-    this.selected.set({ ...updated });
-    this.showEdit.set(false);
-    this.toast('success', 'Usuario actualizado', `${updated.fullName} ha sido actualizado.`);
+    if (this.userForm.password.trim()) dto['password'] = this.userForm.password;
+
+    this.userSvc.updateUser(u.id, dto).subscribe({
+      next: updated => {
+        const withPerms = { ...updated, permissions: u.permissions };
+        this.users.update(list => list.map(x => x.id === u.id ? withPerms : x));
+        this.selected.set(withPerms);
+        this.showEdit.set(false);
+        this.toast('success', 'Usuario actualizado', `${updated.fullName} ha sido actualizado.`);
+      },
+      error: (err) => { this.formError = err?.error?.message ?? 'Error al actualizar.'; },
+    });
   }
 
-  // ── Delete user ───────────────────────────────────────────────────
+  // ── Eliminar usuario ──────────────────────────────────────────────
   confirmDelete(u: AppUser) {
     this.selected.set(u);
     this.showDeleteConfirm.set(true);
   }
 
   executeDelete() {
-    const u = this.selected();
+    const u  = this.selected();
     if (!u) return;
-    const me = this.authSvc.getUser();
-    if (u.id === me?.id) {
-      this.toast('warn', 'Operación no permitida', 'No puedes eliminar tu propia cuenta.');
+    if (u.id === this.authSvc.getUser()?.id) {
+      this.toast('warn', 'No permitido', 'No puedes eliminar tu propia cuenta.');
       this.showDeleteConfirm.set(false);
       return;
     }
-    const idx = USERS.findIndex(x => x.id === u.id);
-    if (idx !== -1) USERS.splice(idx, 1);
-    this.loadUsers();
-    this.selected.set(this.users()[0] ?? null);
-    this.showDeleteConfirm.set(false);
-    this.toast('warn', 'Usuario eliminado', `${u.fullName} fue eliminado.`);
+    this.userSvc.deleteUser(u.id).subscribe({
+      next: () => {
+        this.users.update(list => list.filter(x => x.id !== u.id));
+        this.selected.set(this.users()[0] ?? null);
+        this.showDeleteConfirm.set(false);
+        this.toast('warn', 'Usuario eliminado', `${u.fullName} fue eliminado.`);
+      },
+      error: (err) => {
+        this.showDeleteConfirm.set(false);
+        this.toast('error', 'Error', err?.error?.message ?? 'No se pudo eliminar.');
+      },
+    });
   }
 
   // ── Helpers ───────────────────────────────────────────────────────
-  userColor(id: number): string {
-    return ['#7c6af7','#38bdf8','#4ade80','#f59e0b','#f87171'][id % 5];
+  userColor(id: string): string {
+    const n = [...id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 0);
+    return ['#7c6af7','#38bdf8','#4ade80','#f59e0b','#f87171'][n % 5];
   }
 
-  groupName(gid: number): string {
-    return GROUPS.find(g => g.id === gid)?.nombre ?? '—';
+  groupName(gid: string): string {
+    return this.groupSvc.getGroupById(gid)?.nombre ?? '—';
   }
 
   profileLabel(u: AppUser): string {
-    if (PERMISSION_SETS['superadmin'].every(p => u.permissions.includes(p))) return 'Superadmin';
-    if (u.permissions.length > PERMISSION_SETS['basico'].length) return 'Avanzado';
+    const perms = u.permissions ?? [];
+    if (PERMISSION_SETS['superadmin'].every(p => perms.includes(p))) return 'Superadmin';
+    if (perms.length > PERMISSION_SETS['basico'].length)             return 'Avanzado';
     return 'Básico';
   }
 
   profileColor(u: AppUser): string {
-    if (PERMISSION_SETS['superadmin'].every(p => u.permissions.includes(p))) return '#7c6af7';
-    if (u.permissions.length > PERMISSION_SETS['basico'].length) return '#38bdf8';
+    const perms = u.permissions ?? [];
+    if (PERMISSION_SETS['superadmin'].every(p => perms.includes(p))) return '#7c6af7';
+    if (perms.length > PERMISSION_SETS['basico'].length)             return '#38bdf8';
     return '#4ade80';
   }
-
-  permLabel(p: Permission): string { return p; }
 
   groupForPerm(p: Permission): PermGroup | undefined {
     return PERM_GROUPS.find(g => g.perms.includes(p));
   }
 
-  get draftCount(): number { return this.draftPerms().size; }
-
+  get draftCount(): number  { return this.draftPerms().size; }
   get permsDirty(): boolean {
     const u = this.selected();
     if (!u) return false;
-    const orig = new Set(u.permissions);
+    const orig  = new Set(u.permissions ?? []);
     const draft = this.draftPerms();
     if (orig.size !== draft.size) return true;
     for (const p of draft) { if (!orig.has(p)) return true; }

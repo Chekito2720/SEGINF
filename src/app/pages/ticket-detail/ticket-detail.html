@@ -93,8 +93,8 @@
                 <!-- Comment box -->
                 @if (canComment) {
                 <div class="comment-box">
-                    <div class="comment-avatar" [style.background]="userColor(currentUser?.id ?? 0)">
-                        {{ userInitial(currentUser?.id ?? 0) }}
+                    <div class="comment-avatar" [style.background]="userColor(currentUser?.id ?? '')">
+                        {{ userInitial(currentUser?.id ?? '') }}
                     </div>
                     <div class="comment-input-wrap">
                         <textarea pTextarea [(ngModel)]="newComment" class="td-textarea comment-textarea"
@@ -223,7 +223,7 @@
                 </div>
                 @if (canEditFields) {
                 <div class="member-list">
-                    @for (m of memberOptions; track m.value) {
+                    @for (m of memberOptions(); track m.value) {
                     <button class="member-btn" [class.active]="t.assignedToId === m.value" (click)="reassign(m.value)">
                         <div class="td-avatar sm" [style.background]="userColor(m.value)">
                             {{ m.label.charAt(0) }}

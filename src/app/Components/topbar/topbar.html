@@ -11,7 +11,7 @@
     <!-- Right: avatar + dropdown -->
     <div class="tb-right">
         <div class="tb-avatar-wrap" (click)="toggleMenu()">
-            <div class="tb-avatar" [style.background]="userColor(user?.id ?? 0)">
+            <div class="tb-avatar" [style.background]="userColor(user?.id ?? '')">
                 {{ user?.fullName?.charAt(0)?.toUpperCase() }}
             </div>
             <div class="tb-user-info">
@@ -24,7 +24,7 @@
             @if (menuOpen()) {
             <div class="tb-dropdown">
                 <div class="tb-dropdown-header">
-                    <div class="tb-dd-avatar" [style.background]="userColor(user?.id ?? 0)">
+                    <div class="tb-dd-avatar" [style.background]="userColor(user?.id ?? '')">
                         {{ user?.fullName?.charAt(0)?.toUpperCase() }}
                     </div>
                     <div>

@@ -73,6 +73,29 @@
 
     </section>
 
+    <!-- ══ GRÁFICOS ════════════════════════════════════════════════════════════ -->
+    <section class="charts-section">
+        <div class="chart-card">
+            <div class="chart-card-header">
+                <i class="pi pi-chart-pie"></i>
+                <span>Tickets por estado</span>
+                <span class="chart-total">{{ tickets().length }} total</span>
+            </div>
+            <div class="chart-wrap">
+                <p-chart type="doughnut" [data]="chartData()" [options]="chartOptions" height="200" />
+            </div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-card-header">
+                <i class="pi pi-chart-bar"></i>
+                <span>Tickets por prioridad</span>
+            </div>
+            <div class="chart-wrap">
+                <p-chart type="bar" [data]="priorityChartData()" [options]="barOptions" height="200" />
+            </div>
+        </div>
+    </section>
+
     <!-- ══ ACCESOS RÁPIDOS ═══════════════════════════════════════════════════ -->
     <section class="quick-access">
         <ng-container *ifHasPermission="'tickets_view'">
@@ -256,7 +279,7 @@
         </div>
         <div class="dlg-field">
             <label>Asignado a</label>
-            <p-select [(ngModel)]="form.assignedToId" [options]="memberOpts" optionLabel="label" optionValue="value"
+            <p-select [(ngModel)]="form.assignedToId" [options]="memberOpts()" optionLabel="label" optionValue="value"
                 styleClass="dlg-select" />
         </div>
     </div>

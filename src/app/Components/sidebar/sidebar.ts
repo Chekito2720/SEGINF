@@ -33,7 +33,7 @@ export class SidebarComponent {
     { label: 'Mi Cuenta', icon: 'pi-user',           route: '/home/profile', permission: 'user_view',   activeFor: ['/home/profile']     },
     { label: 'Grupos',    icon: 'pi-users',          route: '/home/groups',  permission: 'groups_view'                                    },
     { label: 'Usuarios',  icon: 'pi-id-card',        route: '/home/user',    permission: 'users_view'                                     },
-    { label: 'Admin',     icon: 'pi-shield',         route: '/home/admin',   superadminOnly: true                                         },
+    { label: 'Admin',     icon: 'pi-shield',         route: '/home/admin',   permission: 'users_edit'                                     },
   ];
 
   constructor(
@@ -45,9 +45,8 @@ export class SidebarComponent {
   get isSuperAdmin(): boolean {
     const payload = this.authSvc.getPayload();
     if (!payload) return false;
-    return PERMISSION_SETS['superadmin'].every(p =>
-      payload.permissions.includes(p)
-    );
+    const perms = (payload.permisos ?? payload.permissions) as string[];
+    return PERMISSION_SETS['superadmin'].every(p => perms.includes(p));
   }
 
   get visibleItems(): NavItem[] {

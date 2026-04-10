@@ -1,45 +1,69 @@
 import { Injectable, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable, map, tap } from 'rxjs';
+import { environment } from '../../environments/environment';
 import {
-  Ticket, TicketStatus, TICKETS,
-  TicketComment, TicketHistory, HistoryAction,
-  TICKET_COMMENTS, TICKET_HISTORY
+  ApiResponse, Ticket, TicketStatus, TicketComment, TicketHistory, HistoryAction,
 } from '../models/Auth.model';
 import { PermissionsService } from './Permissions.service';
 
+const GW = environment.apiGatewayUrl;
+
+export interface CreateTicketDto {
+  titulo:        string;
+  descripcion?:  string;
+  status:        TicketStatus;
+  priority:      string;
+  groupId:       string;
+  assignedToId?: string;
+  dueDate?:      string;
+}
+
+export type UpdateTicketDto = Partial<{
+  titulo:       string;
+  descripcion:  string;
+  priority:     string;
+  assignedToId: string;
+  dueDate:      string;
+}>;
+
 @Injectable({ providedIn: 'root' })
 export class TicketService {
-  private tickets  = signal<Ticket[]>([...TICKETS]);
-  private comments = signal<TicketComment[]>([...TICKET_COMMENTS]);
-  private history  = signal<TicketHistory[]>([...TICKET_HISTORY]);
 
-  private nextCommentId = TICKET_COMMENTS.length + 1;
-  private nextHistoryId = TICKET_HISTORY.length  + 1;
+  private _tickets  = signal<Ticket[]>([]);
+  private _comments = signal<TicketComment[]>([]);
+  private _history  = signal<TicketHistory[]>([]);
 
-  constructor(private permsSvc: PermissionsService) {}
+  constructor(
+    private http:     HttpClient,
+    private permsSvc: PermissionsService,
+  ) {}
 
-  // ── Tickets ──────────────────────────────────────────────────────────────
-  getByGroup(groupId: number): Ticket[] {
-    return this.tickets().filter(t => t.groupId === groupId);
+  // ── Estado reactivo (lectura síncrona) ────────────────────────────
+  getTickets(): Ticket[] { return this._tickets(); }
+
+  getByGroup(groupId: string): Ticket[] {
+    return this._tickets().filter(t => t.groupId === groupId);
   }
 
-  getByGroupAndUser(groupId: number, userId: number): Ticket[] {
-    return this.tickets().filter(t => t.groupId === groupId && t.assignedToId === userId);
+  getByGroupAndUser(groupId: string, userId: string): Ticket[] {
+    return this._tickets().filter(t => t.groupId === groupId && t.assignedToId === userId);
   }
 
   /**
-   * Método centralizado de acceso a tickets con control de visibilidad:
+   * Acceso a tickets con control de visibilidad:
    * - Con 'tickets_view': ve todos los tickets del grupo
-   * - Sin 'tickets_view' (solo 'ticket_view'): ve únicamente los asignados a él
+   * - Sin 'tickets_view' (solo 'ticket_view'): solo los asignados al usuario
    */
-  getForUser(groupId: number, userId: number): Ticket[] {
+  getForUser(groupId: string, userId: string): Ticket[] {
     if (this.permsSvc.hasPermission('tickets_view')) {
       return this.getByGroup(groupId);
     }
     return this.getByGroupAndUser(groupId, userId);
   }
 
-  getById(id: number): Ticket | undefined {
-    return this.tickets().find(t => t.id === id);
+  getById(id: string): Ticket | undefined {
+    return this._tickets().find(t => t.id === id);
   }
 
   countByStatus(tickets: Ticket[]): Record<TicketStatus, number> {
@@ -51,82 +75,156 @@ export class TicketService {
     };
   }
 
-  add(ticket: Omit<Ticket, 'id' | 'createdAt'>, byUserId?: number): Ticket {
-    const newTicket: Ticket = {
-      ...ticket,
-      id:        Math.max(0, ...this.tickets().map(t => t.id)) + 1,
-      createdAt: new Date().toISOString().split('T')[0],
-    };
-    this.tickets.update(list => [...list, newTicket]);
-    if (byUserId) {
-      this.addHistory(newTicket.id, byUserId, 'created', undefined, newTicket.status);
-    }
-    return newTicket;
+  // ── Tickets HTTP ──────────────────────────────────────────────────
+  loadForGroup(groupId: string): Observable<Ticket[]> {
+    return this.http.get<ApiResponse<unknown[]>>(`${GW}/tickets?grupoId=${groupId}`).pipe(
+      map(r => r.data.map(mapTicket)),
+      tap(tickets => this._tickets.set(tickets)),
+    );
   }
 
-  update(id: number, changes: Partial<Ticket>, byUserId?: number) {
-    const old = this.getById(id);
-    this.tickets.update(list => list.map(t => t.id === id ? { ...t, ...changes } : t));
-
-    if (!old || !byUserId) return;
-    if (changes.status      && changes.status      !== old.status)
-      this.addHistory(id, byUserId, 'status_changed',      old.status,       changes.status);
-    if (changes.priority    && changes.priority    !== old.priority)
-      this.addHistory(id, byUserId, 'priority_changed',    old.priority,     changes.priority);
-    if (changes.assignedToId !== undefined && changes.assignedToId !== old.assignedToId)
-      this.addHistory(id, byUserId, 'assigned',            String(old.assignedToId), String(changes.assignedToId));
-    if (changes.titulo      && changes.titulo      !== old.titulo)
-      this.addHistory(id, byUserId, 'title_changed',       old.titulo,       changes.titulo);
-    if (changes.descripcion !== undefined && changes.descripcion !== old.descripcion)
-      this.addHistory(id, byUserId, 'description_changed', undefined,        undefined, 'Descripción actualizada');
-    if (changes.dueDate     !== undefined && changes.dueDate     !== old.dueDate)
-      this.addHistory(id, byUserId, 'duedate_changed',     old.dueDate ?? '—', changes.dueDate ?? '—');
+  fetchById(id: string): Observable<Ticket> {
+    return this.http.get<ApiResponse<unknown>>(`${GW}/tickets/${id}`).pipe(
+      map(r => mapTicket(r.data)),
+    );
   }
 
-  delete(id: number) {
-    this.tickets.update(list => list.filter(t => t.id !== id));
-    this.comments.update(list => list.filter(c => c.ticketId !== id));
-    this.history.update(list => list.filter(h => h.ticketId !== id));
+  add(dto: CreateTicketDto): Observable<Ticket> {
+    const body = toApiBody(dto as unknown as Record<string, unknown>);
+    return this.http.post<ApiResponse<unknown>>(`${GW}/tickets`, body).pipe(
+      map(r => mapTicket(r.data)),
+      tap(t => this._tickets.update(list => [...list, t])),
+    );
   }
 
-  changeStatus(id: number, status: TicketStatus, byUserId?: number) {
-    this.update(id, { status }, byUserId);
+  update(id: string, changes: UpdateTicketDto): Observable<Ticket> {
+    const body = toApiBody(changes as Record<string, unknown>);
+    return this.http.patch<ApiResponse<unknown>>(`${GW}/tickets/${id}`, body).pipe(
+      map(r => mapTicket(r.data)),
+      tap(updated => this._tickets.update(list =>
+        list.map(t => t.id === id ? updated : t)
+      )),
+    );
   }
 
-  // ── Comments ─────────────────────────────────────────────────────────────
-  getComments(ticketId: number): TicketComment[] {
-    return this.comments()
-      .filter(c => c.ticketId === ticketId)
+  delete(id: string): Observable<void> {
+    return this.http.delete<ApiResponse<void>>(`${GW}/tickets/${id}`).pipe(
+      map(() => void 0),
+      tap(() => this._tickets.update(list => list.filter(t => t.id !== id))),
+    );
+  }
+
+  changeStatus(id: string, status: TicketStatus): Observable<Ticket> {
+    return this.http.patch<ApiResponse<unknown>>(`${GW}/tickets/${id}/state`, { estado: status }).pipe(
+      map(r => mapTicket(r.data)),
+      tap(updated => this._tickets.update(list =>
+        list.map(t => t.id === id ? updated : t)
+      )),
+    );
+  }
+
+  // ── Comentarios HTTP ──────────────────────────────────────────────
+  getComments(ticketId: string): TicketComment[] {
+    return this._comments().filter(c => c.ticketId === ticketId)
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   }
 
-  addComment(ticketId: number, userId: number, text: string): TicketComment {
-    const c: TicketComment = {
-      id:        this.nextCommentId++,
-      ticketId, userId, text,
-      createdAt: new Date().toISOString(),
-    };
-    this.comments.update(list => [...list, c]);
-    this.addHistory(ticketId, userId, 'comment_added', undefined, undefined, text.slice(0, 60));
-    return c;
+  loadComments(ticketId: string): Observable<TicketComment[]> {
+    return this.http.get<ApiResponse<unknown[]>>(`${GW}/tickets/${ticketId}/comentarios`).pipe(
+      map(r => r.data.map(mapComment)),
+      tap(comments => {
+        const others = this._comments().filter(c => c.ticketId !== ticketId);
+        this._comments.set([...others, ...comments]);
+      }),
+    );
   }
 
-  // ── History ───────────────────────────────────────────────────────────────
-  getHistory(ticketId: number): TicketHistory[] {
-    return this.history()
-      .filter(h => h.ticketId === ticketId)
+  addComment(ticketId: string, text: string): Observable<TicketComment> {
+    return this.http.post<ApiResponse<unknown>>(`${GW}/tickets/${ticketId}/comentarios`, { contenido: text }).pipe(
+      map(r => mapComment(r.data)),
+      tap(c => this._comments.update(list => [...list, c])),
+    );
+  }
+
+  // ── Historial HTTP ────────────────────────────────────────────────
+  getHistory(ticketId: string): TicketHistory[] {
+    return this._history().filter(h => h.ticketId === ticketId)
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
 
-  private addHistory(
-    ticketId: number, userId: number, action: HistoryAction,
-    from?: string, to?: string, note?: string
-  ) {
-    const h: TicketHistory = {
-      id: this.nextHistoryId++,
-      ticketId, userId, action, from, to, note,
-      createdAt: new Date().toISOString(),
-    };
-    this.history.update(list => [...list, h]);
+  loadHistory(ticketId: string): Observable<TicketHistory[]> {
+    return this.http.get<ApiResponse<unknown[]>>(`${GW}/tickets/${ticketId}/historial`).pipe(
+      map(r => r.data.map(mapHistory)),
+      tap(history => {
+        const others = this._history().filter(h => h.ticketId !== ticketId);
+        this._history.set([...others, ...history]);
+      }),
+    );
   }
+}
+
+// ── Mappers (respuesta backend → modelo frontend) ─────────────────
+function mapTicket(raw: unknown): Ticket {
+  const r = raw as Record<string, unknown>;
+  return {
+    id:           String(r['id']           ?? ''),
+    titulo:       String(r['titulo']       ?? ''),
+    descripcion:  String(r['descripcion']  ?? ''),
+    status:       (r['estado']   ?? r['status']   ?? 'pendiente') as TicketStatus,
+    priority:     (r['prioridad'] ?? r['priority'] ?? 'media')    as Ticket['priority'],
+    groupId:      String(r['grupoId']      ?? r['grupo_id']      ?? ''),
+    assignedToId: String(r['asignadoId']   ?? r['asignado_id']   ?? ''),
+    createdById:  String(r['autorId']      ?? r['autor_id']      ?? ''),
+    createdAt:    String(r['creadoEn']     ?? r['creado_en']     ?? ''),
+    dueDate:      r['fechaFinal']  != null ? String(r['fechaFinal'])
+                : r['fecha_final'] != null ? String(r['fecha_final']) : undefined,
+  };
+}
+
+function mapComment(raw: unknown): TicketComment {
+  const r = raw as Record<string, unknown>;
+  return {
+    id:        String(r['id']        ?? ''),
+    ticketId:  String(r['ticketId']  ?? r['ticket_id']  ?? ''),
+    userId:    String(r['autorId']   ?? r['autor_id']   ?? ''),
+    text:      String(r['contenido'] ?? r['text']       ?? ''),
+    createdAt: String(r['creadoEn']  ?? r['creado_en']  ?? ''),
+    userName:  r['autorNombre']  != null ? String(r['autorNombre'])
+             : r['autor_nombre'] != null ? String(r['autor_nombre']) : undefined,
+  };
+}
+
+function mapHistory(raw: unknown): TicketHistory {
+  const r = raw as Record<string, unknown>;
+  return {
+    id:        String(r['id']        ?? ''),
+    ticketId:  String(r['ticketId']  ?? r['ticket_id']  ?? ''),
+    userId:    String(r['usuarioId'] ?? r['usuario_id'] ?? ''),
+    action:    (r['accion'] ?? r['action'] ?? 'created') as HistoryAction,
+    from:      r['valorAnterior']  != null ? String(r['valorAnterior'])
+             : r['valor_anterior'] != null ? String(r['valor_anterior']) : undefined,
+    to:        r['valorNuevo']   != null ? String(r['valorNuevo'])
+             : r['valor_nuevo']  != null ? String(r['valor_nuevo']) : undefined,
+    note:      r['nota'] != null ? String(r['nota']) : undefined,
+    createdAt: String(r['creadoEn'] ?? r['creado_en'] ?? ''),
+    userName:  r['usuarioNombre'] != null ? String(r['usuarioNombre']) : undefined,
+  };
+}
+
+// ── Mapper (modelo frontend → body del backend) ───────────────────
+// El backend usa camelCase en los cuerpos de petición
+function toApiBody(dto: Record<string, unknown>): Record<string, unknown> {
+  const fieldMap: Record<string, string> = {
+    groupId:      'grupoId',
+    assignedToId: 'asignadoId',
+    createdById:  'autorId',
+    dueDate:      'fechaFinal',
+    status:       'estado',
+    priority:     'prioridad',
+  };
+  const result: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(dto)) {
+    if (v !== undefined && v !== null && v !== '') result[fieldMap[k] ?? k] = v;
+  }
+  return result;
 }

@@ -11,10 +11,10 @@ import { DividerModule }   from 'primeng/divider';
 import { MessageService }  from 'primeng/api';
 import { AuthService }        from '../../Services/Auth.service';
 import { TicketService }      from '../../Services/Ticket.service';
+import { GroupService }       from '../../Services/Group.service';
+import { UserService }        from '../../Services/User.service';
 import { PermissionsService } from '../../Services/Permissions.service';
-import {
-  AppUser, USERS, GROUPS, TicketStatus,
-} from '../../models/Auth.model';
+import { AppUser, TicketStatus, Permission, PERMISSION_SETS } from '../../models/Auth.model';
 
 @Component({
   selector: 'app-profile',
@@ -30,21 +30,16 @@ import {
 })
 export class ProfileComponent implements OnInit {
 
-  // ── Usuario que se está viendo ──────────────────────────────────────
-  profileUser  = signal<AppUser | null>(null);
-  isSelf       = signal(false);   // ¿es el propio usuario?
+  profileUser = signal<AppUser | null>(null);
+  isSelf      = signal(false);
+  loading     = signal(false);
 
-  // ── Edit ────────────────────────────────────────────────────────────
-  editing      = signal(false);
-  draftForm    = {
-    fullName: '', username: '', email: '',
-    phone: '', birthDate: '', address: '',
-  };
+  editing   = signal(false);
+  draftForm = { fullName:'', username:'', email:'', phone:'', birthDate:'', address:'' };
 
-  // ── Filtro de tickets ───────────────────────────────────────────────
   ticketFilter = signal<TicketStatus | 'todos'>('todos');
 
-  statusTabs: { label: string; value: TicketStatus | 'todos'; icon: string; color: string }[] = [
+  statusTabs: { label:string; value:TicketStatus|'todos'; icon:string; color:string }[] = [
     { label:'Todos',       value:'todos',       icon:'pi-list',         color:'#7c6af7' },
     { label:'Pendiente',   value:'pendiente',   icon:'pi-clock',        color:'#f59e0b' },
     { label:'En progreso', value:'en_progreso', icon:'pi-refresh',      color:'#38bdf8' },
@@ -58,6 +53,8 @@ export class ProfileComponent implements OnInit {
     public  authSvc:   AuthService,
     public  permsSvc:  PermissionsService,
     private ticketSvc: TicketService,
+    private groupSvc:  GroupService,
+    private userSvc:   UserService,
     private msgSvc:    MessageService,
   ) {}
 
@@ -66,23 +63,28 @@ export class ProfileComponent implements OnInit {
     const me      = this.authSvc.getUser();
 
     if (paramId) {
-      // Viendo perfil de otro usuario
-      const target = USERS.find(u => u.id === Number(paramId));
-      this.profileUser.set(target ?? null);
-      this.isSelf.set(target?.id === me?.id);
+      this.isSelf.set(paramId === me?.id);
+      this.loading.set(true);
+      this.userSvc.getUser(paramId).subscribe({
+        next:  u => { this.profileUser.set(u); this.loading.set(false); },
+        error: () => { this.loading.set(false); this.router.navigate(['/home/user']); },
+      });
     } else {
-      // Mi propio perfil
-      this.profileUser.set(me ?? null);
       this.isSelf.set(true);
+      this.loading.set(true);
+      this.userSvc.getMe().subscribe({
+        next:  u => { this.profileUser.set(u); this.loading.set(false); },
+        error: () => { this.profileUser.set(me ?? null); this.loading.set(false); },
+      });
     }
   }
 
-  // ── Tickets del usuario perfilado ───────────────────────────────────
+  // ── Tickets del usuario perfilado (del grupo activo) ──────────────
   private allTickets = computed(() => {
     const u = this.profileUser();
-    if (!u) return [];
-    // Busca en todos los grupos del usuario
-    return u.groupIds.flatMap(gid => this.ticketSvc.getByGroupAndUser(gid, u.id));
+    const g = this.authSvc.getGroup();
+    if (!u || !g) return [];
+    return this.ticketSvc.getByGroupAndUser(g.id, u.id);
   });
 
   filteredTickets = computed(() => {
@@ -102,9 +104,8 @@ export class ProfileComponent implements OnInit {
     };
   });
 
-  // ── Edición ─────────────────────────────────────────────────────────
+  // ── Edición ───────────────────────────────────────────────────────
   get canEdit(): boolean {
-    const me = this.authSvc.getUser();
     return this.isSelf() || this.permsSvc.hasPermission('user_edit');
   }
 
@@ -115,9 +116,9 @@ export class ProfileComponent implements OnInit {
       fullName:  u.fullName,
       username:  u.username,
       email:     u.email,
-      phone:     u.phone,
-      birthDate: u.birthDate,
-      address:   u.address,
+      phone:     u.phone    ?? '',
+      birthDate: u.birthDate ?? '',
+      address:   u.address  ?? '',
     };
     this.editing.set(true);
   }
@@ -125,56 +126,76 @@ export class ProfileComponent implements OnInit {
   saveEdit() {
     const u = this.profileUser();
     if (!u || !this.draftForm.fullName.trim()) return;
-    // Actualiza la copia local del signal
-    const updated: AppUser = { ...u, ...this.draftForm };
-    this.profileUser.set(updated);
-    this.editing.set(false);
-    this.msgSvc.add({ severity:'success', summary:'Guardado', detail:'Perfil actualizado.', life:2500 });
+
+    const dto = {
+      fullName:  this.draftForm.fullName.trim(),
+      username:  this.draftForm.username.trim(),
+      email:     this.draftForm.email.trim(),
+      phone:     this.draftForm.phone,
+      birthDate: this.draftForm.birthDate,
+      address:   this.draftForm.address.trim(),
+    };
+
+    const update$ = this.isSelf()
+      ? this.userSvc.updateMe(u.id, dto)
+      : this.userSvc.updateUser(u.id, dto);
+
+    update$.subscribe({
+      next: updated => {
+        this.profileUser.set(updated);
+        this.editing.set(false);
+        this.msgSvc.add({ severity:'success', summary:'Guardado', detail:'Perfil actualizado.', life:2500 });
+      },
+      error: (err) => {
+        this.msgSvc.add({ severity:'error', summary:'Error', detail: err?.error?.message ?? 'No se pudo actualizar.', life:3000 });
+      },
+    });
   }
 
   cancelEdit() { this.editing.set(false); }
 
-  // ── Helpers ─────────────────────────────────────────────────────────
-  userColor(id: number): string {
-    return ['#7c6af7','#38bdf8','#4ade80','#f59e0b','#f87171'][id % 5];
+  // ── Helpers ───────────────────────────────────────────────────────
+  userColor(id: string): string {
+    const n = [...id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 0);
+    return ['#7c6af7','#38bdf8','#4ade80','#f59e0b','#f87171'][n % 5];
   }
 
-  userInitial(u: AppUser): string {
-    return u.fullName.charAt(0).toUpperCase();
+  userInitial(u: AppUser): string { return u?.fullName?.charAt(0)?.toUpperCase() ?? '?'; }
+
+  groupName(gid: string): string {
+    return this.groupSvc.getGroupById(gid)?.nombre ?? '—';
   }
 
-  groupName(gid: number): string {
-    return GROUPS.find(g => g.id === gid)?.nombre ?? '—';
-  }
-
-  groupColor(gid: number): string {
-    return GROUPS.find(g => g.id === gid)?.color ?? '#1a1d30';
+  groupColor(gid: string): string {
+    return this.groupSvc.getGroupById(gid)?.color ?? '#1a1d30';
   }
 
   profileLabel(u: AppUser): string {
-    if (u.permissions.length >= 20) return 'Superadmin';
-    if (u.permissions.length >= 10) return 'Admin';
+    const perms = u.permissions ?? [];
+    if (PERMISSION_SETS['superadmin'].every((p: Permission) => perms.includes(p))) return 'Superadmin';
+    if (perms.length >= 10) return 'Admin';
     return 'Miembro';
   }
 
   profileBadgeColor(u: AppUser): string {
-    if (u.permissions.length >= 20) return '#7c6af7';
-    if (u.permissions.length >= 10) return '#38bdf8';
+    const perms = u.permissions ?? [];
+    if (PERMISSION_SETS['superadmin'].every((p: Permission) => perms.includes(p))) return '#7c6af7';
+    if (perms.length >= 10) return '#38bdf8';
     return '#4ade80';
   }
 
   statusMeta(s: TicketStatus) {
     const map = {
-      pendiente:   { label:'Pendiente',   color:'#f59e0b', bg:'rgba(245,158,11,.12)',  icon:'pi-clock'         },
-      en_progreso: { label:'En progreso', color:'#38bdf8', bg:'rgba(56,189,248,.12)',  icon:'pi-refresh'       },
-      hecho:       { label:'Hecho',       color:'#4ade80', bg:'rgba(74,222,128,.12)',  icon:'pi-check-circle'  },
-      bloqueado:   { label:'Bloqueado',   color:'#f87171', bg:'rgba(248,113,113,.12)', icon:'pi-ban'           },
+      pendiente:   { label:'Pendiente',   color:'#f59e0b', bg:'rgba(245,158,11,.12)',  icon:'pi-clock'        },
+      en_progreso: { label:'En progreso', color:'#38bdf8', bg:'rgba(56,189,248,.12)',  icon:'pi-refresh'      },
+      hecho:       { label:'Hecho',       color:'#4ade80', bg:'rgba(74,222,128,.12)',  icon:'pi-check-circle' },
+      bloqueado:   { label:'Bloqueado',   color:'#f87171', bg:'rgba(248,113,113,.12)', icon:'pi-ban'          },
     };
     return map[s];
   }
 
   priorityMeta(p: string) {
-    const map: Record<string, { color: string; label: string }> = {
+    const map: Record<string, { color:string; label:string }> = {
       baja:    { color:'#4ade80', label:'Baja'    },
       media:   { color:'#38bdf8', label:'Media'   },
       alta:    { color:'#f59e0b', label:'Alta'    },
@@ -193,7 +214,7 @@ export class ProfileComponent implements OnInit {
     catch { return d; }
   }
 
-  openTicket(id: number) { this.router.navigate(['/home/ticket', id]); }
+  openTicket(id: string) { this.router.navigate(['/home/ticket', id]); }
 
   goBack() { this.router.navigate(['/home/user']); }
 }

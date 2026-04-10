@@ -49,7 +49,7 @@
                     <div class="gm-group-badges">
                         <span class="gm-badge">{{ g.nivel }}</span>
                         <span class="gm-badge model">{{ g.model }}</span>
-                        <span class="gm-badge">{{ g.autor }}</span>
+                        <span class="gm-badge">{{ g.creatorId }}</span>
                     </div>
                 </div>
                 <div class="gm-detail-actions">
@@ -179,7 +179,7 @@
 </div>
 
 <!-- ══ MODAL: Crear grupo ══════════════════════════════════════════ -->
-<p-dialog header="Nuevo grupo" [(visible)]="showCreateGroup" [modal]="true" [closable]="true" styleClass="gm-dialog">
+<p-dialog header="Nuevo grupo" [(visible)]="showCreateGroup" [modal]="true" [closable]="true" [focusTrap]="false" styleClass="gm-dialog">
     <div class="gm-form">
         <div class="gm-form-field">
             <label>Nombre *</label>
@@ -220,7 +220,7 @@
 </p-dialog>
 
 <!-- ══ MODAL: Editar grupo ═════════════════════════════════════════ -->
-<p-dialog header="Editar grupo" [(visible)]="showEditGroup" [modal]="true" [closable]="true" styleClass="gm-dialog">
+<p-dialog header="Editar grupo" [(visible)]="showEditGroup" [modal]="true" [closable]="true" [focusTrap]="false" styleClass="gm-dialog">
     <div class="gm-form">
         <div class="gm-form-field">
             <label>Nombre *</label>
@@ -260,7 +260,7 @@
 </p-dialog>
 
 <!-- ══ MODAL: Eliminar grupo ═══════════════════════════════════════ -->
-<p-dialog header="Eliminar grupo" [(visible)]="showDeleteConfirm" [modal]="true" [closable]="true"
+<p-dialog header="Eliminar grupo" [(visible)]="showDeleteConfirm" [modal]="true" [closable]="true" [focusTrap]="false"
     styleClass="gm-dialog sm">
     <div class="gm-confirm-body">
         <i class="pi pi-exclamation-triangle gm-warn-icon"></i>
@@ -276,7 +276,7 @@
 </p-dialog>
 
 <!-- ══ MODAL: Añadir miembro ══════════════════════════════════════ -->
-<p-dialog header="Añadir miembro" [(visible)]="showAddMember" [modal]="true" [closable]="true"
+<p-dialog header="Añadir miembro" [(visible)]="showAddMember" [modal]="true" [closable]="true" [focusTrap]="false"
     styleClass="gm-dialog sm">
     <div class="gm-form">
         <div class="gm-form-field">
@@ -302,7 +302,7 @@
 </p-dialog>
 
 <!-- ══ MODAL: Eliminar miembro ════════════════════════════════════ -->
-<p-dialog header="Eliminar miembro" [(visible)]="showRemoveConfirm" [modal]="true" [closable]="true"
+<p-dialog header="Eliminar miembro" [(visible)]="showRemoveConfirm" [modal]="true" [closable]="true" [focusTrap]="false"
     styleClass="gm-dialog sm">
     <div class="gm-confirm-body">
         <i class="pi pi-user-minus gm-warn-icon"></i>
@@ -319,7 +319,7 @@
 </p-dialog>
 
 <!-- ══ MODAL: Permisos de usuario en el grupo ═════════════════════ -->
-<p-dialog [(visible)]="showUserPermsModal" [modal]="true" [closable]="true" styleClass="gm-dialog perms">
+<p-dialog [(visible)]="showUserPermsModal" [modal]="true" [closable]="true" [focusTrap]="false" styleClass="gm-dialog perms">
     <ng-template pTemplate="header">
         <div class="gm-perm-modal-header">
             <i class="pi pi-shield gm-perm-modal-icon"></i>
@@ -375,7 +375,7 @@
 </p-dialog>
 
 <!-- ══ MODAL: Permisos base del grupo ═════════════════════════════ -->
-<p-dialog [(visible)]="showGroupPermsModal" [modal]="true" [closable]="true" styleClass="gm-dialog perms">
+<p-dialog [(visible)]="showGroupPermsModal" [modal]="true" [closable]="true" [focusTrap]="false" styleClass="gm-dialog perms">
     <ng-template pTemplate="header">
         <div class="gm-perm-modal-header">
             <i class="pi pi-lock gm-perm-modal-icon"></i>

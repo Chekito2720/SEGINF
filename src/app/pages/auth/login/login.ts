@@ -1,17 +1,17 @@
 import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { ButtonModule } from 'primeng/button';
+import { ButtonModule }    from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
-import { PasswordModule } from 'primeng/password';
-import { CheckboxModule } from 'primeng/checkbox';
-import { MessageModule } from 'primeng/message';
-import { CardModule } from 'primeng/card';
-import { TagModule } from 'primeng/tag';
-import { BadgeModule } from 'primeng/badge';
-import { DividerModule } from 'primeng/divider';
-import { AuthService } from '../../../Services/Auth.service';
+import { PasswordModule }  from 'primeng/password';
+import { CheckboxModule }  from 'primeng/checkbox';
+import { MessageModule }   from 'primeng/message';
+import { CardModule }      from 'primeng/card';
+import { TagModule }       from 'primeng/tag';
+import { BadgeModule }     from 'primeng/badge';
+import { DividerModule }   from 'primeng/divider';
+import { AuthService }     from '../../../Services/Auth.service';
 import { AppGroup, AppUser } from '../../../models/Auth.model';
 
 @Component({
@@ -30,17 +30,17 @@ export class LoginComponent {
   step         = signal<1 | 2>(1);
   loading      = signal(false);
   errorMessage = signal('');
-  rememberMe   = false;
 
-  loggedUser   = signal<AppUser | null>(null);
-  userGroups   = signal<AppGroup[]>([]);
+  loggedUser = signal<AppUser | null>(null);
+  userGroups = signal<AppGroup[]>([]);
 
-  form: any;
+  form!: FormGroup;
+  rememberMe = false;
 
   constructor(
-    private fb:       FormBuilder,
-    private router:   Router,
-    private authSvc:  AuthService,
+    private fb:      FormBuilder,
+    private router:  Router,
+    private authSvc: AuthService,
   ) {
     this.form = this.fb.group({
       email:    ['', [Validators.required, Validators.email]],
@@ -51,30 +51,34 @@ export class LoginComponent {
   get emailInvalid()    { const c = this.form.get('email');    return c?.invalid && c?.touched; }
   get passwordInvalid() { const c = this.form.get('password'); return c?.invalid && c?.touched; }
 
-  // ── Paso 1: autenticar ────────────────────────────────────────────────────
-  async onSubmit() {
+  // ── Paso 1: autenticar ────────────────────────────────────────────
+  onSubmit() {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
 
     this.loading.set(true);
     this.errorMessage.set('');
-    await new Promise(r => setTimeout(r, 900));
 
     const { email, password } = this.form.value;
-    const user = this.authSvc.login(email!, password!);
-    this.loading.set(false);
-
-    if (!user) {
-      this.errorMessage.set('Correo o contraseña incorrectos.');
-      return;
-    }
-
-    this.loggedUser.set(user);
-    this.userGroups.set(this.authSvc.getUserGroups());
-    this.step.set(2);
+    this.authSvc.login(email!, password!).subscribe({
+      next: ({ user, groups }) => {
+        this.loading.set(false);
+        this.loggedUser.set(user);
+        this.userGroups.set(groups);
+        if (groups.length > 0) {
+          this.authSvc.selectGroup(groups[0].id);
+        }
+        this.router.navigate(['/home']);
+      },
+      error: (err) => {
+        this.loading.set(false);
+        const msg = err?.error?.message ?? 'Correo o contraseña incorrectos.';
+        this.errorMessage.set(msg);
+      },
+    });
   }
 
-  // ── Paso 2: elegir grupo ──────────────────────────────────────────────────
-  selectGroup(groupId: number) {
+  // ── Paso 2: elegir grupo ──────────────────────────────────────────
+  selectGroup(groupId: string) {
     this.authSvc.selectGroup(groupId);
     this.router.navigate(['/home']);
   }

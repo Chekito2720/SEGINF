@@ -3,7 +3,7 @@ import {
 } from '@angular/core';
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { By }                   from '@angular/platform-browser';
-import { HasPermissionDirective } from './Has permission.directive';
+import { HasPermissionDirective } from './has-permission.directive';
 import { PermissionsService }     from '../Services/Permissions.service';
 import { Permission }             from '../models/Auth.model';
 

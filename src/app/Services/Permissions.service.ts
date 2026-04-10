@@ -1,33 +1,58 @@
 // ═══════════════════════════════════════════════════════════════════
-// PermissionsService  —  fuente única de verdad: el JWT
+// PermissionsService  —  fuente única de verdad para permisos del usuario
 //
-// Los permisos NUNCA se leen del objeto AppUser en memoria.
-// Se extraen exclusivamente del payload del token verificado.
-// Esto garantiza que cualquier cambio de permisos sólo surte efecto
-// cuando se emite un nuevo token (refreshToken en AuthService).
+// Los permisos se cargan desde:
+//   1. El payload del JWT (login inicial, permisos globales)
+//   2. La API de grupos (refreshPermissionsForGroup → permisos efectivos en el grupo)
 // ═══════════════════════════════════════════════════════════════════
 import { Injectable, signal } from '@angular/core';
-import { Permission }         from '../models/Auth.model';
-import { JwtService }         from './Jwt.service';
+import { HttpClient } from '@angular/common/http';
+import { Permission, ApiResponse } from '../models/Auth.model';
+import { JwtService } from './Jwt.service';
+import { environment } from '../../environments/environment';
+
+const GW = environment.apiGatewayUrl;
 
 @Injectable({ providedIn: 'root' })
 export class PermissionsService {
 
-  // Signal privada — solo actualizable via loadFromToken
-  private _permissions = signal<Permission[]>([]);
+  private _globalPermissions      = signal<Permission[]>([]);
+  private _contextualPermissions  = signal<Permission[]>([]);
+  private _permissions            = signal<Permission[]>([]);
 
-  // ── Cargar desde token (llamado por AuthService) ──────────────────
+  constructor(private http: HttpClient) {}
+
+  private _merge(): void {
+    const merged = [...new Set([...this._globalPermissions(), ...this._contextualPermissions()])];
+    this._permissions.set(merged as Permission[]);
+  }
+
+  // ── Cargar desde token ────────────────────────────────────────────
   loadFromToken(token: string, jwtSvc: JwtService): void {
-    const payload = jwtSvc.verify(token);
-    if (!payload) {
-      this._permissions.set([]);
-      return;
-    }
-    this._permissions.set(payload.permissions as Permission[]);
+    const payload = jwtSvc.decode(token);
+    if (!payload) { this._globalPermissions.set([]); this._permissions.set([]); return; }
+    const perms = (payload as any).permisos ?? payload.permissions ?? [];
+    this._globalPermissions.set(perms as Permission[]);
+    this._merge();
+  }
+
+  // ── Refrescar permisos según grupo seleccionado ───────────────────
+  // Combina los permisos globales del JWT con los contextuales del grupo
+  refreshPermissionsForGroup(groupId: string, userId: string): void {
+    this.http.get<ApiResponse<{ permisosGrupo: Permission[] }>>(`${GW}/grupos/${groupId}/miembros/${userId}/permisos`)
+      .subscribe({
+        next:  r => {
+          this._contextualPermissions.set(r.data?.permisosGrupo ?? []);
+          this._merge();
+        },
+        error: () => { /* mantener permisos actuales si falla */ },
+      });
   }
 
   // ── Limpiar (logout) ──────────────────────────────────────────────
   clearPermissions(): void {
+    this._globalPermissions.set([]);
+    this._contextualPermissions.set([]);
     this._permissions.set([]);
   }
 
@@ -48,8 +73,7 @@ export class PermissionsService {
     return this._permissions();
   }
 
-  // ── Deprecated: solo para compatibilidad con tests legacy ─────────
-  /** @deprecated Use loadFromToken. Evita llamar directamente. */
+  /** @deprecated Use loadFromToken. Solo para compatibilidad con tests legacy. */
   setPermissions(perms: Permission[]): void {
     this._permissions.set(perms);
   }

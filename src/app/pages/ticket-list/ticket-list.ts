@@ -10,23 +10,17 @@ import { ToastModule }     from 'primeng/toast';
 import { MessageService }  from 'primeng/api';
 import { AuthService }        from '../../Services/Auth.service';
 import { TicketService }      from '../../Services/Ticket.service';
+import { GroupService }       from '../../Services/Group.service';
 import { PermissionsService } from '../../Services/Permissions.service';
-import {
-  Ticket, TicketStatus, TicketPriority, USERS,
-} from '../../models/Auth.model';
+import { Ticket, TicketStatus, TicketPriority } from '../../models/Auth.model';
 import { QuickFiltersComponent } from '../../Components/quick-filters/quick-filters';
 import { QuickFilterId }         from '../../Components/quick-filters/quick-filter.model';
 
-export type SortField = 'id' | 'titulo' | 'status' | 'priority' | 'assignedToId' | 'dueDate' | 'createdAt';
+export type SortField = 'createdAt' | 'titulo' | 'status' | 'priority' | 'assignedToId' | 'dueDate';
 export type SortDir   = 'asc' | 'desc';
 
-const PRIORITY_RANK: Record<TicketPriority, number> = {
-  baja: 1, media: 2, alta: 3, critica: 4,
-};
-
-const STATUS_RANK: Record<TicketStatus, number> = {
-  pendiente: 1, en_progreso: 2, bloqueado: 3, hecho: 4,
-};
+const PRIORITY_RANK: Record<TicketPriority, number> = { baja:1, media:2, alta:3, critica:4 };
+const STATUS_RANK:   Record<TicketStatus,   number> = { pendiente:1, en_progreso:2, bloqueado:3, hecho:4 };
 
 @Component({
   selector: 'app-ticket-list',
@@ -43,51 +37,48 @@ const STATUS_RANK: Record<TicketStatus, number> = {
 export class TicketListComponent implements OnInit {
 
   // ── Filtros ────────────────────────────────────────────────────────
-  search      = signal('');
+  search         = signal('');
   filterStatus   = signal<TicketStatus | ''>('');
   filterPriority = signal<TicketPriority | ''>('');
-  filterAssignee = signal<number | 0>(0);
+  filterAssignee = signal<string>('');
   quickFilter    = signal<QuickFilterId>('none');
 
-  // ── Ordenamiento ───────────────────────────────────────────────────
-  sortField = signal<SortField>('id');
+  sortField = signal<SortField>('createdAt');
   sortDir   = signal<SortDir>('asc');
 
-  // ── Paginación ─────────────────────────────────────────────────────
   pageSize    = signal(10);
   currentPage = signal(1);
 
-  // ── Opciones de filtro ─────────────────────────────────────────────
+  loading = signal(false);
+
   statusOptions = [
-    { label: 'Todos los estados', value: '' },
-    { label: 'Pendiente',         value: 'pendiente'   },
-    { label: 'En progreso',       value: 'en_progreso' },
-    { label: 'Hecho',             value: 'hecho'       },
-    { label: 'Bloqueado',         value: 'bloqueado'   },
+    { label:'Todos los estados', value:'' },
+    { label:'Pendiente',   value:'pendiente'   },
+    { label:'En progreso', value:'en_progreso' },
+    { label:'Hecho',       value:'hecho'       },
+    { label:'Bloqueado',   value:'bloqueado'   },
   ];
 
   priorityOptions = [
-    { label: 'Todas las prioridades', value: '' },
-    { label: 'Baja',    value: 'baja'    },
-    { label: 'Media',   value: 'media'   },
-    { label: 'Alta',    value: 'alta'    },
-    { label: 'Crítica', value: 'critica' },
+    { label:'Todas las prioridades', value:'' },
+    { label:'Baja',    value:'baja'    },
+    { label:'Media',   value:'media'   },
+    { label:'Alta',    value:'alta'    },
+    { label:'Crítica', value:'critica' },
   ];
 
   pageSizeOptions = [
-    { label: '5  por página',  value: 5  },
-    { label: '10 por página',  value: 10 },
-    { label: '20 por página',  value: 20 },
-    { label: '50 por página',  value: 50 },
+    { label:'5  por página', value:5  },
+    { label:'10 por página', value:10 },
+    { label:'20 por página', value:20 },
+    { label:'50 por página', value:50 },
   ];
 
   memberOptions = computed(() => {
-    const group = this.authSvc.getGroup();
-    if (!group) return [];
-    const members = USERS.filter(u => u.groupIds.includes(group.id));
+    const members = this.groupSvc.getGroupMembers();
     return [
-      { label: 'Todos los asignados', value: 0 },
-      ...members.map(u => ({ label: u.fullName, value: u.id })),
+      { label:'Todos los asignados', value:'' },
+      ...members.map(m => ({ label: m.fullName, value: m.id })),
     ];
   });
 
@@ -95,22 +86,28 @@ export class TicketListComponent implements OnInit {
     public  authSvc:   AuthService,
     public  permsSvc:  PermissionsService,
     private ticketSvc: TicketService,
+    private groupSvc:  GroupService,
     private router:    Router,
     private msgSvc:    MessageService,
   ) {}
 
-  ngOnInit() {}
+  ngOnInit() {
+    const g    = this.authSvc.getGroup();
+    const user = this.authSvc.getUser();
+    if (!g || !user) return;
+    this.loading.set(true);
+    this.ticketSvc.loadForGroup(g.id).subscribe({
+      next: () => this.loading.set(false),
+      error: () => this.loading.set(false),
+    });
+  }
 
-  // ── Pipeline: filtrar + ordenar ────────────────────────────────────
+  // ── Pipeline ──────────────────────────────────────────────────────
   private rawTickets = computed(() => {
     const group = this.authSvc.getGroup();
-    if (!group) return [];
-    const user = this.authSvc.getUser();
-    // group_member solo ve sus tickets
-    if (user && !this.permsSvc.hasPermission('tickets_view') && this.permsSvc.hasPermission('ticket_view')) {
-      return this.ticketSvc.getByGroupAndUser(group.id, user.id);
-    }
-    return this.ticketSvc.getByGroup(group.id);
+    const user  = this.authSvc.getUser();
+    if (!group || !user) return [];
+    return this.ticketSvc.getForUser(group.id, user.id);
   });
 
   filtered = computed(() => {
@@ -122,16 +119,15 @@ export class TicketListComponent implements OnInit {
     const qf = this.quickFilter();
 
     return this.rawTickets().filter(t => {
-      if (q  && !t.titulo.toLowerCase().includes(q) && !String(t.id).includes(q)) return false;
+      if (q  && !t.titulo.toLowerCase().includes(q) && !t.id.includes(q)) return false;
       if (st && t.status   !== st) return false;
       if (pr && t.priority !== pr) return false;
       if (as && t.assignedToId !== as) return false;
-      // Quick filter
       if (qf === 'mis_tickets'    && t.assignedToId !== me?.id) return false;
-      if (qf === 'sin_asignar'    && t.assignedToId !== 0) return false;
+      if (qf === 'sin_asignar'    && t.assignedToId)            return false;
       if (qf === 'prioridad_alta' && t.priority !== 'alta' && t.priority !== 'critica') return false;
-      if (qf === 'vencidos'       && !(t.dueDate && t.status !== 'hecho' && new Date(t.dueDate) < new Date())) return false;
-      if (qf === 'bloqueados'     && t.status !== 'bloqueado') return false;
+      if (qf === 'vencidos'  && !(t.dueDate && t.status !== 'hecho' && new Date(t.dueDate) < new Date())) return false;
+      if (qf === 'bloqueados' && t.status !== 'bloqueado') return false;
       return true;
     });
   });
@@ -141,7 +137,7 @@ export class TicketListComponent implements OnInit {
     const me  = this.authSvc.getUser();
     return {
       mis_tickets:    all.filter(t => t.assignedToId === me?.id).length,
-      sin_asignar:    all.filter(t => t.assignedToId === 0).length,
+      sin_asignar:    all.filter(t => !t.assignedToId).length,
       prioridad_alta: all.filter(t => t.priority === 'alta' || t.priority === 'critica').length,
       vencidos:       all.filter(t => t.dueDate && t.status !== 'hecho' && new Date(t.dueDate) < new Date()).length,
       bloqueados:     all.filter(t => t.status === 'bloqueado').length,
@@ -154,16 +150,13 @@ export class TicketListComponent implements OnInit {
     const field = this.sortField();
     const dir   = this.sortDir() === 'asc' ? 1 : -1;
     return [...this.filtered()].sort((a, b) => {
-      let va: any = a[field as keyof Ticket];
-      let vb: any = b[field as keyof Ticket];
-      if (field === 'priority') { va = PRIORITY_RANK[a.priority]; vb = PRIORITY_RANK[b.priority]; }
-      if (field === 'status')   { va = STATUS_RANK[a.status];     vb = STATUS_RANK[b.status];     }
-      if (field === 'assignedToId') { va = this.userName(a.assignedToId); vb = this.userName(b.assignedToId); }
-      if (va === undefined || va === null) va = '';
-      if (vb === undefined || vb === null) vb = '';
-      if (va < vb) return -1 * dir;
-      if (va > vb) return  1 * dir;
-      return 0;
+      let va: any = (a as any)[field];
+      let vb: any = (b as any)[field];
+      if (field === 'priority')    { va = PRIORITY_RANK[a.priority]; vb = PRIORITY_RANK[b.priority]; }
+      if (field === 'status')      { va = STATUS_RANK[a.status];     vb = STATUS_RANK[b.status];     }
+      if (field === 'assignedToId'){ va = this.userName(a.assignedToId); vb = this.userName(b.assignedToId); }
+      va ??= ''; vb ??= '';
+      return va < vb ? -1 * dir : va > vb ? 1 * dir : 0;
     });
   });
 
@@ -175,28 +168,18 @@ export class TicketListComponent implements OnInit {
   });
 
   pages = computed(() => {
-    const total = this.totalPages();
-    const cur   = this.currentPage();
-    const delta = 2;
+    const total = this.totalPages(), cur = this.currentPage(), delta = 2;
     const range: (number | '…')[] = [];
     for (let i = 1; i <= total; i++) {
-      if (i === 1 || i === total || (i >= cur - delta && i <= cur + delta)) {
-        range.push(i);
-      } else if (range[range.length - 1] !== '…') {
-        range.push('…');
-      }
+      if (i === 1 || i === total || (i >= cur - delta && i <= cur + delta)) range.push(i);
+      else if (range[range.length - 1] !== '…') range.push('…');
     }
     return range;
   });
 
-  // ── Sort ───────────────────────────────────────────────────────────
   sort(field: SortField) {
-    if (this.sortField() === field) {
-      this.sortDir.set(this.sortDir() === 'asc' ? 'desc' : 'asc');
-    } else {
-      this.sortField.set(field);
-      this.sortDir.set('asc');
-    }
+    if (this.sortField() === field) this.sortDir.update(d => d === 'asc' ? 'desc' : 'asc');
+    else { this.sortField.set(field); this.sortDir.set('asc'); }
     this.currentPage.set(1);
   }
 
@@ -205,53 +188,38 @@ export class TicketListComponent implements OnInit {
     return this.sortDir() === 'asc' ? 'pi-sort-up-fill' : 'pi-sort-down-fill';
   }
 
-  // ── Filtros ────────────────────────────────────────────────────────
-  onSearch(value: string)    { this.search.set(value);      this.currentPage.set(1); }
-  onStatus(v: string)        { this.filterStatus.set(v as any);   this.currentPage.set(1); }
-  onPriority(v: string)      { this.filterPriority.set(v as any); this.currentPage.set(1); }
-  onAssignee(v: number)      { this.filterAssignee.set(v);        this.currentPage.set(1); }
-  onPageSize(v: number)      { this.pageSize.set(v);              this.currentPage.set(1); }
+  onSearch(value: string)   { this.search.set(value);          this.currentPage.set(1); }
+  onStatus(v: string)       { this.filterStatus.set(v as any); this.currentPage.set(1); }
+  onPriority(v: string)     { this.filterPriority.set(v as any); this.currentPage.set(1); }
+  onAssignee(v: string)     { this.filterAssignee.set(v);      this.currentPage.set(1); }
+  onPageSize(v: number)     { this.pageSize.set(v);            this.currentPage.set(1); }
 
   clearFilters() {
-    this.search.set('');
-    this.filterStatus.set('');
-    this.filterPriority.set('');
-    this.filterAssignee.set(0);
-    this.quickFilter.set('none');
-    this.currentPage.set(1);
+    this.search.set(''); this.filterStatus.set(''); this.filterPriority.set('');
+    this.filterAssignee.set(''); this.quickFilter.set('none'); this.currentPage.set(1);
   }
 
   get hasActiveFilters(): boolean {
     return !!(this.search() || this.filterStatus() || this.filterPriority() || this.filterAssignee() || this.quickFilter() !== 'none');
   }
 
-  // ── Navegación ─────────────────────────────────────────────────────
-  openDetail(ticket: Ticket) {
-    this.router.navigate(['/home/ticket', ticket.id]);
-  }
-
-  goToPage(p: number | '…') {
-    if (typeof p === 'number') this.currentPage.set(p);
-  }
-
+  openDetail(ticket: Ticket) { this.router.navigate(['/home/ticket', ticket.id]); }
+  goToPage(p: number | '…') { if (typeof p === 'number') this.currentPage.set(p); }
   prevPage() { if (this.currentPage() > 1) this.currentPage.update(p => p - 1); }
   nextPage() { if (this.currentPage() < this.totalPages()) this.currentPage.update(p => p + 1); }
 
-  // ── Helpers de display ─────────────────────────────────────────────
-  userName(id: number): string {
-    return USERS.find(u => u.id === id)?.fullName ?? '—';
+  // ── Helpers ────────────────────────────────────────────────────────
+  userName(id: string): string {
+    return this.groupSvc.getGroupMembers().find(m => m.id === id)?.fullName ?? '—';
+  }
+  userInitial(id: string): string { return this.userName(id).charAt(0).toUpperCase(); }
+  userColor(id: string): string {
+    const n = [...id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 0);
+    return ['#7c6af7','#38bdf8','#4ade80','#f59e0b','#f87171'][n % 5];
   }
 
-  userInitial(id: number): string {
-    return this.userName(id).charAt(0).toUpperCase();
-  }
-
-  userColor(id: number): string {
-    return ['#7c6af7','#38bdf8','#4ade80','#f59e0b','#f87171'][id % 5];
-  }
-
-  statusMeta(s: TicketStatus): { label: string; color: string; bg: string; icon: string } {
-    const map: Record<TicketStatus, { label: string; color: string; bg: string; icon: string }> = {
+  statusMeta(s: TicketStatus) {
+    const map: Record<TicketStatus, { label:string; color:string; bg:string; icon:string }> = {
       pendiente:   { label:'Pendiente',   color:'#f59e0b', bg:'rgba(245,158,11,.12)',  icon:'pi-clock'        },
       en_progreso: { label:'En progreso', color:'#38bdf8', bg:'rgba(56,189,248,.12)',  icon:'pi-refresh'      },
       hecho:       { label:'Hecho',       color:'#4ade80', bg:'rgba(74,222,128,.12)',  icon:'pi-check-circle' },
@@ -260,12 +228,12 @@ export class TicketListComponent implements OnInit {
     return map[s];
   }
 
-  priorityMeta(p: TicketPriority): { label: string; color: string; bg: string; icon: string } {
-    const map: Record<TicketPriority, { label: string; color: string; bg: string; icon: string }> = {
-      baja:    { label:'Baja',    color:'#4ade80', bg:'rgba(74,222,128,.12)',  icon:'pi-angle-down'        },
-      media:   { label:'Media',   color:'#38bdf8', bg:'rgba(56,189,248,.12)',  icon:'pi-minus'             },
-      alta:    { label:'Alta',    color:'#f59e0b', bg:'rgba(245,158,11,.12)',  icon:'pi-angle-up'          },
-      critica: { label:'Crítica', color:'#f87171', bg:'rgba(248,113,113,.12)', icon:'pi-exclamation-circle'},
+  priorityMeta(p: TicketPriority) {
+    const map: Record<TicketPriority, { label:string; color:string; bg:string; icon:string }> = {
+      baja:    { label:'Baja',    color:'#4ade80', bg:'rgba(74,222,128,.12)',  icon:'pi-angle-down'         },
+      media:   { label:'Media',   color:'#38bdf8', bg:'rgba(56,189,248,.12)',  icon:'pi-minus'              },
+      alta:    { label:'Alta',    color:'#f59e0b', bg:'rgba(245,158,11,.12)',  icon:'pi-angle-up'           },
+      critica: { label:'Crítica', color:'#f87171', bg:'rgba(248,113,113,.12)', icon:'pi-exclamation-circle' },
     };
     return map[p];
   }
@@ -276,16 +244,14 @@ export class TicketListComponent implements OnInit {
 
   formatDate(d?: string): string {
     if (!d) return '—';
-    try {
-      return new Date(d).toLocaleDateString('es-ES', { day:'2-digit', month:'short', year:'numeric' });
-    } catch { return d; }
+    try { return new Date(d).toLocaleDateString('es-ES', { day:'2-digit', month:'short', year:'numeric' }); }
+    catch { return d; }
   }
 
   get summary(): string {
-    const total    = this.filtered().length;
-    const showing  = this.page().length;
-    const start    = (this.currentPage() - 1) * this.pageSize() + 1;
-    const end      = start + showing - 1;
+    const total = this.filtered().length;
+    const start = (this.currentPage() - 1) * this.pageSize() + 1;
+    const end   = start + this.page().length - 1;
     return total === 0 ? 'Sin resultados' : `${start}–${end} de ${total} tickets`;
   }
 }

@@ -85,7 +85,7 @@
                     <span class="adm-user-card-username">
                         <i class="pi pi-at"></i> {{ u.username }}
                     </span>
-                    @if (u.groupIds.length > 0) {
+                    @if ((u.groupIds?.length ?? 0) > 0) {
                     <div class="adm-user-groups">
                         @for (gid of u.groupIds; track gid) {
                         <span class="adm-group-pill">{{ groupName(gid) }}</span>

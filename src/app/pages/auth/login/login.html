@@ -54,23 +54,6 @@
 
         </form>
 
-        <!-- Credenciales de prueba -->
-        <div class="demo-box">
-            <p class="demo-title"><i class="pi pi-info-circle"></i> Credenciales de prueba</p>
-            <div class="demo-row">
-                <span class="demo-label">SuperAdmin</span>
-                <span>admin&#64;miapp.com / Admin&#64;12345</span>
-            </div>
-            <div class="demo-row">
-                <span class="demo-label">Admin Grupo</span>
-                <span>ana&#64;miapp.com / Usuario&#64;12345</span>
-            </div>
-            <div class="demo-row">
-                <span class="demo-label">Miembro</span>
-                <span>carlos&#64;miapp.com / Carlos&#64;12345</span>
-            </div>
-        </div>
-
         <p class="auth-footer">
             ¿No tienes cuenta? <a routerLink="/auth/register">Regístrate</a>
         </p>
@@ -100,8 +83,8 @@
                 <p-divider styleClass="group-divider" />
 
                 <div class="group-meta">
-                    <span><i class="pi pi-users"></i> {{ group.integrantes }} integrantes</span>
-                    <span><i class="pi pi-ticket"></i> {{ group.tickets }} tickets</span>
+                    <span><i class="pi pi-users"></i> {{ group.memberCount ?? 0 }} integrantes</span>
+                    <span><i class="pi pi-ticket"></i> {{ group.ticketCount ?? 0 }} tickets</span>
                 </div>
 
                 <!-- Modelo LLM con el mismo color del fondo, solo texto diferenciado -->

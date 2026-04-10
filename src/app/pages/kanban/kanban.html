@@ -225,7 +225,7 @@
         <div class="dlg-row">
             <div class="dlg-field">
                 <label>Asignado a</label>
-                <p-select [(ngModel)]="editForm.assignedToId" [options]="memberOpts" optionLabel="label"
+                <p-select [(ngModel)]="editForm.assignedToId" [options]="memberOpts()" optionLabel="label"
                     optionValue="value" styleClass="dlg-select" />
             </div>
             <div class="dlg-field">
@@ -283,7 +283,7 @@
         <div class="dlg-row">
             <div class="dlg-field">
                 <label>Asignado a</label>
-                <p-select [(ngModel)]="editForm.assignedToId" [options]="memberOpts" optionLabel="label"
+                <p-select [(ngModel)]="editForm.assignedToId" [options]="memberOpts()" optionLabel="label"
                     optionValue="value" styleClass="dlg-select" />
             </div>
             <div class="dlg-field">

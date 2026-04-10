@@ -23,8 +23,9 @@ export class TopbarComponent {
   get user()  { return this.authSvc.getUser(); }
   get group() { return this.authSvc.getGroup(); }
 
-  userColor(id: number): string {
-    return ['#7c6af7','#38bdf8','#4ade80','#f59e0b','#f87171'][id % 5];
+  userColor(id: string): string {
+    const n = [...id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 0);
+    return ['#7c6af7','#38bdf8','#4ade80','#f59e0b','#f87171'][n % 5];
   }
 
   toggleMenu() { this.menuOpen.update(v => !v); }

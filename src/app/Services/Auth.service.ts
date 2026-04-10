@@ -1,149 +1,192 @@
 // ═══════════════════════════════════════════════════════════════════
-// AuthService  —  login / logout / sesión persistida via JWT simulado
+// AuthService  —  autenticación HTTP via API Gateway
 //
 // Flujo:
-//   login()  → busca usuario en USERS, genera JWT (JwtService.generate)
-//              guarda token en localStorage, actualiza señales reactivas
-//              PermissionsService lee el token, nunca el array del usuario
-//
-//   restore() → llamado en APP_INITIALIZER; verifica el token guardado
-//               y rehidrata la sesión sin pedir credenciales de nuevo
-//
-//   logout() → borra token de localStorage, limpia señales y permisos
+//   login()       → POST /auth/login → guarda token en cookie, carga permisos
+//   selectGroup() → guarda grupo en cookie, refresca permisos del grupo
+//   logout()      → POST /auth/logout, borra cookies y limpia estado
+//   restore()     → rehidrata sesión desde cookie al iniciar la app
 // ═══════════════════════════════════════════════════════════════════
 import { Injectable, signal } from '@angular/core';
-import { AppUser, AppGroup, USERS, GROUPS } from '../models/Auth.model';
-import { JwtService, JwtPayload } from './Jwt.service';
-import { PermissionsService }     from './Permissions.service';
+import { HttpClient } from '@angular/common/http';
+import { Observable, map, tap, catchError, of } from 'rxjs';
+import {
+  AppUser, AppGroup, LoginResponse, ApiResponse, Permission,
+} from '../models/Auth.model';
+import { JwtService } from './Jwt.service';
+import { PermissionsService } from './Permissions.service';
+import { GroupService } from './Group.service';
+import { mapUser } from './User.service';
+import { environment } from '../../environments/environment';
 
-const TOKEN_KEY = 'miapp_token';
-const GROUP_KEY = 'miapp_group';
+const GW          = environment.apiGatewayUrl;
+const TOKEN_COOKIE = 'miapp_token';
+const GROUP_COOKIE = 'miapp_group';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
 
-  private currentUser  = signal<AppUser  | null>(null);
-  private currentGroup = signal<AppGroup | null>(null);
+  private _currentUser  = signal<AppUser  | null>(null);
+  private _currentGroup = signal<AppGroup | null>(null);
+  private _userGroups   = signal<AppGroup[]>([]);
 
   constructor(
-    private jwtSvc:   JwtService,
-    private permsSvc: PermissionsService,
+    private http:      HttpClient,
+    private jwtSvc:    JwtService,
+    private permsSvc:  PermissionsService,
+    private groupSvc:  GroupService,
   ) {
     this.restore();
   }
 
   // ── LOGIN ─────────────────────────────────────────────────────────
-  login(email: string, password: string): AppUser | null {
-    const user = USERS.find(u => u.email === email && u.password === password);
-    if (!user) return null;
+  login(email: string, password: string): Observable<{ user: AppUser; groups: AppGroup[] }> {
+    return this.http.post<ApiResponse<LoginResponse>>(`${GW}/auth/login`, { email, password }).pipe(
+      map(r => (r.data as unknown as LoginResponse[])[0] ?? (r.data as unknown as LoginResponse)),
+      tap(data => {
+        this._storeToken(data.token);
+        const user = mapUser(data.user as unknown as Record<string, unknown>);
+        this._currentUser.set(user);
+        this._userGroups.set(data.groups ?? []);
+        this.permsSvc.loadFromToken(data.token, this.jwtSvc);
+      }),
+      map(data => ({
+        user:   mapUser(data.user as unknown as Record<string, unknown>),
+        groups: data.groups ?? [],
+      })),
+    );
+  }
 
-    const token = this.jwtSvc.generate({
-      sub:         user.id,
-      username:    user.username,
-      email:       user.email,
-      fullName:    user.fullName,
-      groupIds:    user.groupIds,
-      permissions: user.permissions,
-    });
-
-    localStorage.setItem(TOKEN_KEY, token);
-    this._hydrateFromPayload(this.jwtSvc.verify(token)!);
-    return user;
+  // ── REGISTER ──────────────────────────────────────────────────────
+  register(dto: {
+    fullName: string; username: string; email: string; password: string;
+    phone?: string; birthDate?: string; address?: string; confirmPassword?: string;
+  }): Observable<AppUser> {
+    const body = {
+      fullName:        dto.fullName,
+      username:        dto.username,
+      email:           dto.email,
+      password:        dto.password,
+      confirmPassword: dto.confirmPassword,
+      phone:           dto.phone,
+      birthDate:       dto.birthDate,
+      address:         dto.address,
+    };
+    return this.http.post<ApiResponse<AppUser>>(`${GW}/auth/register`, body).pipe(
+      map(r => mapUser(r.data as unknown as Record<string, unknown>)),
+    );
   }
 
   // ── LOGOUT ────────────────────────────────────────────────────────
-  logout() {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(GROUP_KEY);
-    this.currentUser.set(null);
-    this.currentGroup.set(null);
-    this.permsSvc.clearPermissions();
-  }
-
-  // ── RESTAURAR SESIÓN (APP_INITIALIZER / constructor) ─────────────
-  restore(): boolean {
-    const token = localStorage.getItem(TOKEN_KEY);
-    if (!token) return false;
-
-    const payload = this.jwtSvc.verify(token);
-    if (!payload) {
-      // Token expirado o inválido → limpiar
-      localStorage.removeItem(TOKEN_KEY);
-      localStorage.removeItem(GROUP_KEY);
-      return false;
-    }
-
-    this._hydrateFromPayload(payload);
-    return true;
+  logout(): void {
+    // Notificar al servidor (best-effort)
+    this.http.post(`${GW}/auth/logout`, {}).pipe(catchError(() => of(null))).subscribe();
+    this._clearSession();
   }
 
   // ── SELECCIONAR GRUPO ─────────────────────────────────────────────
-  selectGroup(groupId: number) {
-    const group = GROUPS.find(g => g.id === groupId) ?? null;
-    this.currentGroup.set(group);
-    if (group) localStorage.setItem(GROUP_KEY, String(groupId));
-    else        localStorage.removeItem(GROUP_KEY);
+  selectGroup(groupId: string): void {
+    const group = this._userGroups().find(g => g.id === groupId) ?? null;
+    this._currentGroup.set(group);
+    if (group) {
+      this._saveCookie(GROUP_COOKIE, groupId);
+      this.permsSvc.refreshPermissionsForGroup(groupId, this._currentUser()?.id ?? '');
+      this.groupSvc.loadGroupMembers(groupId).subscribe();
+    } else {
+      this._deleteCookie(GROUP_COOKIE);
+    }
   }
 
-  // ── REFRESH TOKEN (re-emitir con permisos actualizados) ───────────
-  // Llamado por AdminComponent tras guardar permisos
-  refreshToken(userId: number) {
-    const user = USERS.find(u => u.id === userId);
-    if (!user) return;
+  // ── REFRESH PERMISSIONS (p.ej. tras editar permisos en admin) ─────
+  refreshPermissions(): void {
+    const g = this._currentGroup();
+    if (g) this.permsSvc.refreshPermissionsForGroup(g.id, this._currentUser()?.id ?? '');
+  }
 
-    const token = this.jwtSvc.generate({
-      sub:         user.id,
-      username:    user.username,
-      email:       user.email,
-      fullName:    user.fullName,
-      groupIds:    user.groupIds,
-      permissions: user.permissions,
-    });
-
-    localStorage.setItem(TOKEN_KEY, token);
-    // Si es el usuario activo, rehidratar permisos
-    if (this.currentUser()?.id === userId) {
-      this.permsSvc.loadFromToken(token, this.jwtSvc);
+  // ── RESTAURAR SESIÓN ──────────────────────────────────────────────
+  restore(): void {
+    const token = this._getToken();
+    if (!token || this.jwtSvc.isExpired(token)) {
+      this._clearSession();
+      return;
     }
+
+    const payload = this.jwtSvc.decode(token);
+    if (!payload) { this._clearSession(); return; }
+
+    // Rehidratar usuario y permisos desde el token
+    const user: AppUser = {
+      id:       payload.sub,
+      fullName: payload.nombre_completo ?? payload.fullName ?? payload.username ?? '',
+      username: payload.username,
+      email:    payload.email,
+    };
+    this._currentUser.set(user);
+    this.permsSvc.loadFromToken(token, this.jwtSvc);
+
+    // Restaurar grupos del usuario
+    this.groupSvc.loadUserGroups().subscribe({
+      next: groups => {
+        this._userGroups.set(groups);
+        const savedGroupId = this._getCookie(GROUP_COOKIE);
+        if (savedGroupId) {
+          const group = groups.find(g => g.id === savedGroupId) ?? null;
+          if (group) {
+            this._currentGroup.set(group);
+            this.permsSvc.refreshPermissionsForGroup(group.id, user.id);
+            this.groupSvc.loadGroupMembers(group.id).subscribe();
+          }
+        }
+      },
+      error: () => {},
+    });
   }
 
   // ── GETTERS ───────────────────────────────────────────────────────
-  getUser():     AppUser  | null { return this.currentUser();  }
-  getGroup():    AppGroup | null { return this.currentGroup(); }
-  isLoggedIn():  boolean         { return !!this.currentUser(); }
-  getToken():    string  | null  { return localStorage.getItem(TOKEN_KEY); }
-  getPayload():  JwtPayload | null {
-    const t = this.getToken();
-    return t ? this.jwtSvc.verify(t) : null;
+  getUser():    AppUser  | null { return this._currentUser();  }
+  getGroup():   AppGroup | null { return this._currentGroup(); }
+  isLoggedIn(): boolean         { return !!this._currentUser(); }
+  getToken():   string  | null  { return this._getToken(); }
+
+  getPayload() {
+    const t = this._getToken();
+    return t ? this.jwtSvc.decode(t) : null;
   }
 
   getUserGroups(): AppGroup[] {
-    const user = this.currentUser();
-    if (!user) return [];
-    return GROUPS.filter(g => user.groupIds.includes(g.id));
+    return this._userGroups();
   }
 
-  // ── PRIVADO ───────────────────────────────────────────────────────
-  private _hydrateFromPayload(payload: JwtPayload) {
-    // Sincronizar usuario desde USERS (para datos actualizados)
-    const user = USERS.find(u => u.id === payload.sub) ?? null;
-    this.currentUser.set(user);
+  // ── Cookie helpers ────────────────────────────────────────────────
+  private _storeToken(token: string): void {
+    this._saveCookie(TOKEN_COOKIE, token, 1);
+  }
 
-    // Permisos SIEMPRE del token, no del objeto usuario
-    this.permsSvc.loadFromToken(
-      localStorage.getItem(TOKEN_KEY)!,
-      this.jwtSvc,
-    );
+  private _getToken(): string | null {
+    return this._getCookie(TOKEN_COOKIE);
+  }
 
-    // Restaurar grupo si estaba guardado
-    const savedGroupId = localStorage.getItem(GROUP_KEY);
-    if (savedGroupId) {
-      const gid   = parseInt(savedGroupId, 10);
-      const group = GROUPS.find(g => g.id === gid) ?? null;
-      // Solo restaurar si el usuario aún pertenece al grupo
-      if (group && user?.groupIds.includes(gid)) {
-        this.currentGroup.set(group);
-      }
-    }
+  private _saveCookie(name: string, value: string, days = 7): void {
+    const expires = new Date();
+    expires.setDate(expires.getDate() + days);
+    document.cookie = `${name}=${value}; expires=${expires.toUTCString()}; path=/; SameSite=Strict`;
+  }
+
+  private _getCookie(name: string): string | null {
+    const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+    return match ? decodeURIComponent(match[2]) : null;
+  }
+
+  private _deleteCookie(name: string): void {
+    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+  }
+
+  private _clearSession(): void {
+    this._deleteCookie(TOKEN_COOKIE);
+    this._deleteCookie(GROUP_COOKIE);
+    this._currentUser.set(null);
+    this._currentGroup.set(null);
+    this._userGroups.set([]);
+    this.permsSvc.clearPermissions();
   }
 }

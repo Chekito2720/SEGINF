@@ -1,11 +1,12 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { Router }       from '@angular/router';
 import { TooltipModule } from 'primeng/tooltip';
 import { AuthService }        from '../../Services/Auth.service';
 import { TicketService }      from '../../Services/Ticket.service';
+import { GroupService }       from '../../Services/Group.service';
 import { PermissionsService } from '../../Services/Permissions.service';
-import { USERS, TicketStatus } from '../../models/Auth.model';
+import { GroupMember, TicketStatus, Permission, PERMISSION_SETS } from '../../models/Auth.model';
 
 @Component({
   selector: 'app-user',
@@ -14,25 +15,27 @@ import { USERS, TicketStatus } from '../../models/Auth.model';
   templateUrl: './user.html',
   styleUrl:    './user.css',
 })
-export class UserComponent {
+export class UserComponent implements OnInit {
 
   constructor(
     public  authSvc:   AuthService,
     public  permsSvc:  PermissionsService,
     private ticketSvc: TicketService,
+    private groupSvc:  GroupService,
     private router:    Router,
   ) {}
 
-  // Getters — sin () en el template
-  get group()   { return this.authSvc.getGroup(); }
-
-  get members() {
+  ngOnInit() {
     const g = this.authSvc.getGroup();
-    if (!g) return [];
-    return USERS.filter(u => u.groupIds.includes(g.id));
+    if (!g) return;
+    this.groupSvc.loadGroupMembers(g.id).subscribe();
+    this.ticketSvc.loadForGroup(g.id).subscribe();
   }
 
-  ticketCounts(userId: number): Record<TicketStatus | 'total', number> {
+  get group()   { return this.authSvc.getGroup(); }
+  get members() { return this.groupSvc.getGroupMembers(); }
+
+  ticketCounts(userId: string): Record<TicketStatus | 'total', number> {
     const g = this.authSvc.getGroup();
     if (!g) return { total:0, pendiente:0, en_progreso:0, hecho:0, bloqueado:0 };
     const tickets = this.ticketSvc.getByGroupAndUser(g.id, userId);
@@ -45,23 +48,26 @@ export class UserComponent {
     };
   }
 
-  profileLabel(u: typeof USERS[0]): string {
-    if (u.permissions.length >= 20) return 'Superadmin';
-    if (u.permissions.length >= 10) return 'Admin';
+  profileLabel(u: GroupMember): string {
+    const perms = u.permissions ?? u.effectivePermissions ?? [];
+    if (PERMISSION_SETS['superadmin'].every((p: Permission) => perms.includes(p))) return 'Superadmin';
+    if (perms.length >= 10) return 'Admin';
     return 'Miembro';
   }
 
-  profileColor(u: typeof USERS[0]): string {
-    if (u.permissions.length >= 20) return '#7c6af7';
-    if (u.permissions.length >= 10) return '#38bdf8';
+  profileColor(u: GroupMember): string {
+    const perms = u.permissions ?? u.effectivePermissions ?? [];
+    if (PERMISSION_SETS['superadmin'].every((p: Permission) => perms.includes(p))) return '#7c6af7';
+    if (perms.length >= 10) return '#38bdf8';
     return '#4ade80';
   }
 
-  userColor(id: number): string {
-    return ['#7c6af7','#38bdf8','#4ade80','#f59e0b','#f87171'][id % 5];
+  userColor(id: string): string {
+    const n = [...id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 0);
+    return ['#7c6af7','#38bdf8','#4ade80','#f59e0b','#f87171'][n % 5];
   }
 
-  openProfile(userId: number) {
+  openProfile(userId: string) {
     this.router.navigate(['/home/profile', userId]);
   }
 }

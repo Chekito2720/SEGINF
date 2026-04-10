@@ -792,3 +792,46 @@
     color: #4ade80;
 }
 
+
+/* ── CHARTS ────────────────────────────────────────────────────────────── */
+.charts-section {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.25rem;
+}
+
+.chart-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 1rem;
+    padding: 1.25rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.chart-card-header {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    font-size: .85rem;
+    font-weight: 600;
+    color: #c4c4e0;
+}
+
+.chart-card-header i {
+    color: #7c6af7;
+    font-size: 1rem;
+}
+
+.chart-total {
+    margin-left: auto;
+    font-size: .75rem;
+    color: #9a9cc0;
+    font-weight: 400;
+}
+
+.chart-wrap {
+    position: relative;
+    height: 200px;
+}

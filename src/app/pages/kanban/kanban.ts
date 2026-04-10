@@ -4,35 +4,23 @@ import {
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { ButtonModule }     from 'primeng/button';
-import { DialogModule }     from 'primeng/dialog';
-import { InputTextModule }  from 'primeng/inputtext';
-import { TextareaModule }   from 'primeng/textarea';
-import { SelectModule }     from 'primeng/select';
-import { ToastModule }      from 'primeng/toast';
-import { TooltipModule }    from 'primeng/tooltip';
-import { TagModule }        from 'primeng/tag';
-import { MessageService }   from 'primeng/api';
-import { AuthService }       from '../../Services/Auth.service';
-import { TicketService }     from '../../Services/Ticket.service';
-import { PermissionsService } from '../../Services/Permissions.service';
-import { HasPermissionDirective } from '../../directives/Has permission.directive';
-import {
-  Ticket, TicketStatus, TicketPriority, AppGroup, USERS
-} from '../../models/Auth.model';
+import { ButtonModule }    from 'primeng/button';
+import { DialogModule }    from 'primeng/dialog';
+import { InputTextModule } from 'primeng/inputtext';
+import { TextareaModule }  from 'primeng/textarea';
+import { SelectModule }    from 'primeng/select';
+import { ToastModule }     from 'primeng/toast';
+import { TooltipModule }   from 'primeng/tooltip';
+import { TagModule }       from 'primeng/tag';
+import { MessageService }  from 'primeng/api';
+import { AuthService }         from '../../Services/Auth.service';
+import { TicketService, CreateTicketDto, UpdateTicketDto } from '../../Services/Ticket.service';
+import { GroupService }        from '../../Services/Group.service';
+import { PermissionsService }  from '../../Services/Permissions.service';
+import { HasPermissionDirective } from '../../directives/has-permission.directive';
+import { Ticket, TicketStatus, TicketPriority, AppGroup } from '../../models/Auth.model';
 import { QuickFiltersComponent } from '../../Components/quick-filters/quick-filters';
 import { QuickFilterId }         from '../../Components/quick-filters/quick-filter.model';
-
-export interface TicketForm {
-  titulo:       string;
-  descripcion:  string;
-  status:       TicketStatus;
-  priority:     TicketPriority;
-  groupId:      number;
-  assignedToId: number;
-  createdById:  number;
-  dueDate:      string;
-}
 
 export interface KanbanColumn {
   status: TicketStatus;
@@ -50,8 +38,7 @@ export interface KanbanColumn {
     CommonModule, FormsModule,
     ButtonModule, DialogModule, InputTextModule, TextareaModule,
     SelectModule, ToastModule, TooltipModule, TagModule,
-    HasPermissionDirective,
-    QuickFiltersComponent,
+    HasPermissionDirective, QuickFiltersComponent,
   ],
   providers: [MessageService],
   templateUrl: './kanban.html',
@@ -59,30 +46,24 @@ export interface KanbanColumn {
 })
 export class KanbanComponent implements OnInit {
 
-  group   = signal<AppGroup | null>(null);
-  tickets      = signal<Ticket[]>([]);
-  quickFilter  = signal<QuickFilterId>('none');
+  group       = signal<AppGroup | null>(null);
+  tickets     = signal<Ticket[]>([]);
+  quickFilter = signal<QuickFilterId>('none');
 
-  // ── Drag state ──────────────────────────────────────────────────────────
-  draggingId = signal<number | null>(null);
+  draggingId  = signal<string | null>(null);
 
-  // ── Detail / Edit modal ─────────────────────────────────────────────────
   showDetail  = signal(false);
   showCreate  = signal(false);
   selected    = signal<Ticket | null>(null);
   editMode    = signal(false);
 
-  editForm: TicketForm = {
-    titulo: '', descripcion: '', status: 'pendiente', priority: 'media',
-    groupId: 0, assignedToId: 1, createdById: 1, dueDate: '',
-  };
+  editForm: CreateTicketDto & { dueDate: string } = { titulo: '', descripcion: '', status: 'pendiente', priority: 'media', groupId: '', assignedToId: '', dueDate: '' };
 
-  // ── Columns ─────────────────────────────────────────────────────────────
   columns: KanbanColumn[] = [
-    { status:'pendiente',   label:'Pendiente',   accent:'#f59e0b', glow:'rgba(245,158,11,.14)',  icon:'pi-clock',         isDragOver:false },
-    { status:'en_progreso', label:'En progreso', accent:'#38bdf8', glow:'rgba(56,189,248,.14)',  icon:'pi-refresh',       isDragOver:false },
-    { status:'hecho',       label:'Hecho',       accent:'#4ade80', glow:'rgba(74,222,128,.14)',  icon:'pi-check-circle',  isDragOver:false },
-    { status:'bloqueado',   label:'Bloqueado',   accent:'#f87171', glow:'rgba(248,113,113,.14)', icon:'pi-ban',           isDragOver:false },
+    { status:'pendiente',   label:'Pendiente',   accent:'#f59e0b', glow:'rgba(245,158,11,.14)',  icon:'pi-clock',        isDragOver:false },
+    { status:'en_progreso', label:'En progreso', accent:'#38bdf8', glow:'rgba(56,189,248,.14)',  icon:'pi-refresh',      isDragOver:false },
+    { status:'hecho',       label:'Hecho',       accent:'#4ade80', glow:'rgba(74,222,128,.14)',  icon:'pi-check-circle', isDragOver:false },
+    { status:'bloqueado',   label:'Bloqueado',   accent:'#f87171', glow:'rgba(248,113,113,.14)', icon:'pi-ban',          isDragOver:false },
   ];
 
   statusOpts   = this.columns.map(c => ({ label: c.label, value: c.status }));
@@ -92,19 +73,24 @@ export class KanbanComponent implements OnInit {
     { label:'Alta',    value:'alta'    },
     { label:'Crítica', value:'critica' },
   ];
-  memberOpts = USERS.map(u => ({ label: u.fullName, value: u.id }));
+  memberOpts = computed(() =>
+    this.groupSvc.getGroupMembers().map(m => ({ label: m.fullName, value: m.id }))
+  );
 
   constructor(
     public  authSvc:   AuthService,
     public  permsSvc:  PermissionsService,
     private ticketSvc: TicketService,
+    private groupSvc:  GroupService,
     private msgSvc:    MessageService,
     private cdr:       ChangeDetectorRef,
     private router:    Router,
   ) {}
 
   ngOnInit() {
-    this.group.set(this.authSvc.getGroup());
+    const g = this.authSvc.getGroup();
+    this.group.set(g);
+    if (g) this.groupSvc.loadGroupMembers(g.id).subscribe();
     this.loadTickets();
   }
 
@@ -112,7 +98,19 @@ export class KanbanComponent implements OnInit {
     const g    = this.group();
     const user = this.authSvc.getUser();
     if (!g || !user) return;
-    this.tickets.set([...this.ticketSvc.getForUser(g.id, user.id)]);
+    this.ticketSvc.loadForGroup(g.id).subscribe({
+      next: () => this.tickets.set(this.ticketSvc.getForUser(g.id, user.id)),
+      error: () => {},
+    });
+  }
+
+  private emptyForm(): CreateTicketDto & { dueDate: string } {
+    return {
+      titulo: '', descripcion: '', status: 'pendiente', priority: 'media',
+      groupId:      this.group()?.id ?? '',
+      assignedToId: this.authSvc.getUser()?.id ?? '',
+      dueDate: '',
+    };
   }
 
   colTickets(status: TicketStatus): Ticket[] {
@@ -123,7 +121,7 @@ export class KanbanComponent implements OnInit {
     const me = this.authSvc.getUser();
     switch (this.quickFilter()) {
       case 'mis_tickets':    return list.filter(t => t.assignedToId === me?.id);
-      case 'sin_asignar':    return list.filter(t => t.assignedToId === 0);
+      case 'sin_asignar':    return list.filter(t => !t.assignedToId);
       case 'prioridad_alta': return list.filter(t => t.priority === 'alta' || t.priority === 'critica');
       case 'vencidos':       return list.filter(t => t.dueDate && t.status !== 'hecho' && new Date(t.dueDate) < new Date());
       case 'bloqueados':     return list.filter(t => t.status === 'bloqueado');
@@ -136,7 +134,7 @@ export class KanbanComponent implements OnInit {
     const me  = this.authSvc.getUser();
     return {
       mis_tickets:    all.filter(t => t.assignedToId === me?.id).length,
-      sin_asignar:    all.filter(t => t.assignedToId === 0).length,
+      sin_asignar:    all.filter(t => !t.assignedToId).length,
       prioridad_alta: all.filter(t => t.priority === 'alta' || t.priority === 'critica').length,
       vencidos:       all.filter(t => t.dueDate && t.status !== 'hecho' && new Date(t.dueDate) < new Date()).length,
       bloqueados:     all.filter(t => t.status === 'bloqueado').length,
@@ -149,26 +147,19 @@ export class KanbanComponent implements OnInit {
     return this.columns.find(c => c.status === status)!;
   }
 
-  counts = computed(() => {
-    const t = this.tickets();
-    return {
-      pendiente:   t.filter(x => x.status === 'pendiente').length,
-      en_progreso: t.filter(x => x.status === 'en_progreso').length,
-      hecho:       t.filter(x => x.status === 'hecho').length,
-      bloqueado:   t.filter(x => x.status === 'bloqueado').length,
-    };
-  });
+  counts = computed(() => ({
+    pendiente:   this.tickets().filter(x => x.status === 'pendiente').length,
+    en_progreso: this.tickets().filter(x => x.status === 'en_progreso').length,
+    hecho:       this.tickets().filter(x => x.status === 'hecho').length,
+    bloqueado:   this.tickets().filter(x => x.status === 'bloqueado').length,
+  }));
 
-  // ── Drag & Drop (HTML5 native) ─────────────────────────────────────────
+  // ── Drag & Drop ────────────────────────────────────────────────────
   onDragStart(event: DragEvent, ticket: Ticket) {
-    if (!this.permsSvc.hasPermission('ticket_edit')) {
-      event.preventDefault();
-      return;
-    }
+    if (!this.permsSvc.hasPermission('ticket_edit')) { event.preventDefault(); return; }
     this.draggingId.set(ticket.id);
     event.dataTransfer!.effectAllowed = 'move';
-    event.dataTransfer!.setData('text/plain', String(ticket.id));
-    // ghost opacity via CSS class added in template
+    event.dataTransfer!.setData('text/plain', ticket.id);
   }
 
   onDragEnd() {
@@ -182,30 +173,24 @@ export class KanbanComponent implements OnInit {
     col.isDragOver = true;
   }
 
-  onDragLeave(col: KanbanColumn) {
-    col.isDragOver = false;
-  }
+  onDragLeave(col: KanbanColumn) { col.isDragOver = false; }
 
   onDrop(event: DragEvent, targetStatus: TicketStatus, col: KanbanColumn) {
     event.preventDefault();
     col.isDragOver = false;
     const id = this.draggingId();
-    if (id == null) return;
+    if (!id) return;
 
-    this.ticketSvc.changeStatus(id, targetStatus);
-    this.loadTickets();
-    this.draggingId.set(null);
-
-    const colDef = this.col(targetStatus);
-    this.msgSvc.add({
-      severity: 'success',
-      summary: 'Movido',
-      detail: `Ticket #${id} → ${colDef.label}`,
-      life: 2000,
+    this.ticketSvc.changeStatus(id, targetStatus).subscribe({
+      next: () => {
+        this.loadTickets();
+        this.draggingId.set(null);
+        this.msgSvc.add({ severity:'success', summary:'Movido', detail:`Ticket → ${this.col(targetStatus).label}`, life:2000 });
+      },
+      error: () => this.draggingId.set(null),
     });
   }
 
-  // ── Navigate to detail page ─────────────────────────────────────────────
   openDetail(ticket: Ticket) {
     this.router.navigate(['/home/ticket', ticket.id]);
   }
@@ -214,14 +199,9 @@ export class KanbanComponent implements OnInit {
     const t = this.selected();
     if (!t) return;
     this.editForm = {
-      titulo:       t.titulo,
-      descripcion:  t.descripcion,
-      status:       t.status,
-      priority:     t.priority,
-      groupId:      t.groupId,
-      assignedToId: t.assignedToId,
-      createdById:  t.createdById,
-      dueDate:      t.dueDate ?? '',
+      titulo: t.titulo, descripcion: t.descripcion, status: t.status,
+      priority: t.priority, groupId: t.groupId,
+      assignedToId: t.assignedToId, dueDate: t.dueDate ?? '',
     };
     this.editMode.set(true);
   }
@@ -229,67 +209,73 @@ export class KanbanComponent implements OnInit {
   saveEdit() {
     const t = this.selected();
     if (!t || !this.editForm.titulo.trim()) return;
-    this.ticketSvc.update(t.id, this.editForm);
-    this.loadTickets();
-    this.editMode.set(false);
-    this.selected.set({ ...t, ...this.editForm });
-    this.msgSvc.add({ severity:'success', summary:'Guardado', detail:'Ticket actualizado.', life:2500 });
+    const { dueDate, ...rest } = this.editForm;
+    const changes: UpdateTicketDto = { ...rest, ...(dueDate ? { dueDate } : {}) };
+    this.ticketSvc.update(t.id, changes).subscribe({
+      next: updated => {
+        this.loadTickets();
+        this.editMode.set(false);
+        this.selected.set(updated);
+        this.msgSvc.add({ severity:'success', summary:'Guardado', detail:'Ticket actualizado.', life:2500 });
+      },
+      error: () => this.msgSvc.add({ severity:'error', summary:'Error', detail:'No se pudo actualizar.' }),
+    });
   }
 
   deleteSelected() {
     const t = this.selected();
     if (!t) return;
-    this.ticketSvc.delete(t.id);
-    this.loadTickets();
-    this.showDetail.set(false);
-    this.msgSvc.add({ severity:'warn', summary:'Eliminado', detail:`Ticket #${t.id} eliminado.`, life:2500 });
+    this.ticketSvc.delete(t.id).subscribe({
+      next: () => {
+        this.loadTickets();
+        this.showDetail.set(false);
+        this.msgSvc.add({ severity:'warn', summary:'Eliminado', detail:'Ticket eliminado.', life:2500 });
+      },
+      error: () => {},
+    });
   }
 
-  // ── Create modal ───────────────────────────────────────────────────────
   openCreate() {
-    this.editForm = {
-      titulo: '', descripcion: '', status: 'pendiente', priority: 'media',
-      groupId:      this.group()?.id ?? 0,
-      assignedToId: this.authSvc.getUser()?.id ?? 1,
-      createdById:  this.authSvc.getUser()?.id ?? 1,
-      dueDate: '',
-    };
+    this.editForm = this.emptyForm();
     this.showCreate.set(true);
   }
 
   saveCreate() {
     if (!this.editForm.titulo.trim()) return;
-    this.ticketSvc.add(this.editForm);
-    this.loadTickets();
-    this.showCreate.set(false);
-    this.msgSvc.add({ severity:'success', summary:'Creado', detail:'Ticket creado.', life:2500 });
+    const { dueDate, ...dto } = this.editForm;
+    this.ticketSvc.add({ ...dto, ...(dueDate ? { dueDate } : {}) }).subscribe({
+      next: () => {
+        this.loadTickets();
+        this.showCreate.set(false);
+        this.msgSvc.add({ severity:'success', summary:'Creado', detail:'Ticket creado.', life:2500 });
+      },
+      error: () => this.msgSvc.add({ severity:'error', summary:'Error', detail:'No se pudo crear.' }),
+    });
   }
 
-  // ── Helpers ────────────────────────────────────────────────────────────
-  createdByName(id: number): string {
-    return USERS.find(u => u.id === id)?.fullName ?? '—';
+  // ── Helpers ────────────────────────────────────────────────────────
+  createdByName(id: string): string {
+    return this.groupSvc.getGroupMembers().find(m => m.id === id)?.fullName ?? '—';
   }
-  assigneeName(id: number): string {
-    return USERS.find(u => u.id === id)?.fullName ?? '—';
+  assigneeName(id: string): string {
+    return this.groupSvc.getGroupMembers().find(m => m.id === id)?.fullName ?? '—';
   }
-
-  assigneeInitial(id: number): string {
+  assigneeInitial(id: string): string {
     return this.assigneeName(id).charAt(0).toUpperCase();
   }
 
   priorityMeta(p: TicketPriority): { color: string; bg: string } {
     const map: Record<TicketPriority, { color:string; bg:string }> = {
-      baja:    { color:'#4ade80', bg:'rgba(74,222,128,.14)'   },
-      media:   { color:'#f59e0b', bg:'rgba(245,158,11,.14)'   },
-      alta:    { color:'#f87171', bg:'rgba(248,113,113,.14)'  },
-      critica: { color:'#e11d48', bg:'rgba(225,29,72,.16)'    },
+      baja:    { color:'#4ade80', bg:'rgba(74,222,128,.14)'  },
+      media:   { color:'#f59e0b', bg:'rgba(245,158,11,.14)'  },
+      alta:    { color:'#f87171', bg:'rgba(248,113,113,.14)' },
+      critica: { color:'#e11d48', bg:'rgba(225,29,72,.16)'   },
     };
     return map[p] ?? { color:'#9a9cc0', bg:'rgba(154,156,192,.12)' };
   }
 
   isOverdue(dueDate?: string): boolean {
-    if (!dueDate) return false;
-    return new Date(dueDate) < new Date();
+    return !!dueDate && new Date(dueDate) < new Date();
   }
 
   get formInvalid() { return !this.editForm.titulo.trim(); }
