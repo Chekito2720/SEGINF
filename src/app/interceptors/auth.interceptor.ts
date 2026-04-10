@@ -1,4 +1,6 @@
 import { HttpInterceptorFn } from '@angular/common/http';
+import { inject } from '@angular/core';
+import { AuthService } from '../Services/Auth.service';
 
 const TOKEN_COOKIE = 'miapp_token';
 
@@ -9,15 +11,19 @@ function getCookie(name: string): string | null {
 
 /**
  * Interceptor de autenticación.
- * Lee el JWT de la cookie "miapp_token" y lo agrega como
- * Authorization: Bearer <token> en cada request al API Gateway.
+ * - Adjunta Authorization: Bearer <token>
+ * - Adjunta x-group-id con el grupo activo para que el gateway
+ *   pueda verificar permisos contextuales del grupo.
  */
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const token = getCookie(TOKEN_COOKIE);
   if (!token) return next(req);
 
-  const authReq = req.clone({
-    setHeaders: { Authorization: `Bearer ${token}` },
-  });
-  return next(authReq);
+  const authSvc = inject(AuthService);
+  const group   = authSvc.getGroup();
+
+  const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+  if (group?.id) headers['x-group-id'] = group.id;
+
+  return next(req.clone({ setHeaders: headers }));
 };

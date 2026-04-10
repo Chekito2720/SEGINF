@@ -255,19 +255,48 @@
     styleClass="gm-dialog sm">
     <div class="gm-form">
         <div class="gm-form-field">
-            <label>Correo del usuario</label>
-            <input pInputText [(ngModel)]="addMemberEmail" placeholder="usuario@correo.com" class="gm-input"
-                (input)="addMemberError = ''" (keydown.enter)="saveAddMember()" />
-            @if (addMemberError) {
-            <span class="gm-field-error">
-                <i class="pi pi-exclamation-circle"></i> {{ addMemberError }}
-            </span>
+            <div class="gm-picker-search">
+                <i class="pi pi-search gm-picker-search-icon"></i>
+                <input pInputText
+                       [ngModel]="memberSearch()"
+                       (ngModelChange)="memberSearch.set($event); selectedMemberId.set(null); addMemberError = ''"
+                       placeholder="Buscar por nombre, usuario o correo..."
+                       class="gm-input gm-picker-input" />
+            </div>
+        </div>
+        <div class="gm-picker-list">
+            @if (availableUsers().length === 0) {
+                <div class="gm-picker-empty">
+                    <i class="pi pi-users"></i>
+                    <span>No hay usuarios disponibles</span>
+                </div>
+            }
+            @for (u of availableUsers(); track u.id) {
+            <div class="gm-picker-row"
+                 [class.selected]="selectedMemberId() === u.id"
+                 (click)="selectedMemberId.set(u.id); addMemberError = ''">
+                <div class="gm-picker-avatar" [style.background]="userColor(u.id)">
+                    {{ u.fullName.charAt(0).toUpperCase() }}
+                </div>
+                <div class="gm-picker-info">
+                    <span class="gm-picker-name">{{ u.fullName }}</span>
+                    <span class="gm-picker-sub">&#64;{{ u.username }} · {{ u.email }}</span>
+                </div>
+                @if (selectedMemberId() === u.id) {
+                    <i class="pi pi-check gm-picker-check"></i>
+                }
+            </div>
             }
         </div>
+        @if (addMemberError) {
+        <span class="gm-field-error">
+            <i class="pi pi-exclamation-circle"></i> {{ addMemberError }}
+        </span>
+        }
     </div>
     <ng-template pTemplate="footer">
         <button class="gm-btn" (click)="showAddMember.set(false)">Cancelar</button>
-        <button class="gm-btn accent" [disabled]="!addMemberEmail.trim()" (click)="saveAddMember()">
+        <button class="gm-btn accent" [disabled]="!selectedMemberId()" (click)="saveAddMember()">
             <i class="pi pi-user-plus"></i> Añadir
         </button>
     </ng-template>

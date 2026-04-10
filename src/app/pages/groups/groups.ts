@@ -1,4 +1,4 @@
-import { Component, signal, OnInit } from '@angular/core';
+import { Component, signal, computed, OnInit } from '@angular/core';
 import { CommonModule }    from '@angular/common';
 import { FormsModule }     from '@angular/forms';
 import { Router }          from '@angular/router';
@@ -14,6 +14,7 @@ import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { MessageService, ConfirmationService } from 'primeng/api';
 import { AuthService }        from '../../Services/Auth.service';
 import { GroupService }       from '../../Services/Group.service';
+import { UserService }        from '../../Services/User.service';
 import { PermissionsService } from '../../Services/Permissions.service';
 import {
   AppGroup, GroupMember, Permission, ALL_PERMISSIONS, PERM_LABELS, PERM_CATEGORIES,
@@ -57,8 +58,23 @@ export class GroupsComponent implements OnInit {
   permLabels     = PERM_LABELS;
 
   groupForm      = { nombre: '', descripcion: '', nivel: '', color: '#1e1b4b', model: '' };
-  addMemberEmail = '';
-  addMemberError = '';
+  memberSearch       = signal('');
+  selectedMemberId   = signal<string | null>(null);
+  addMemberError     = '';
+
+  availableUsers = computed(() => {
+    const members   = this.selected()?.members ?? [];
+    const memberIds = new Set(members.map(m => m.id));
+    const search    = this.memberSearch().toLowerCase().trim();
+    return this.userSvc.getUsers()
+      .filter(u => !memberIds.has(u.id))
+      .filter(u =>
+        !search ||
+        u.fullName.toLowerCase().includes(search) ||
+        u.username.toLowerCase().includes(search) ||
+        u.email.toLowerCase().includes(search)
+      );
+  });
 
   nivelOptions  = ['Básico', 'Intermedio', 'Avanzado', 'Experto'];
   modelOptions  = ['GPT-4o', 'Claude Sonnet', 'Gemini Pro', 'Llama 3', 'Mistral'];
@@ -68,6 +84,7 @@ export class GroupsComponent implements OnInit {
     public  authSvc:   AuthService,
     public  permsSvc:  PermissionsService,
     private groupSvc:  GroupService,
+    private userSvc:   UserService,
     private router:    Router,
     private msgSvc:    MessageService,
   ) {}
@@ -207,25 +224,28 @@ export class GroupsComponent implements OnInit {
 
   // ── Agregar miembro ───────────────────────────────────────────────
   openAddMember() {
-    this.addMemberEmail = '';
+    this.memberSearch.set('');
+    this.selectedMemberId.set(null);
     this.addMemberError = '';
+    this.userSvc.loadUsers().subscribe();
     this.showAddMember.set(true);
   }
 
   saveAddMember() {
-    const g = this.selected();
+    const g  = this.selected();
+    const id = this.selectedMemberId();
     if (!g) return;
-    const email = this.addMemberEmail.trim().toLowerCase();
-    if (!email) { this.addMemberError = 'Ingresa un correo electrónico.'; return; }
+    if (!id) { this.addMemberError = 'Selecciona un usuario.'; return; }
 
-    this.groupSvc.addMember(g.id, email).subscribe({
+    const user = this.userSvc.getUserById(id);
+    this.groupSvc.addMember(g.id, id).subscribe({
       next: () => {
         this.showAddMember.set(false);
         this.reloadSelected();
-        this.toast('success', 'Miembro añadido', `${email} se unió a "${g.nombre}".`);
+        this.toast('success', 'Miembro añadido', `${user?.fullName ?? id} se unió a "${g.nombre}".`);
       },
       error: (err) => {
-        this.addMemberError = err?.error?.message ?? 'No se encontró el usuario o ya es miembro.';
+        this.addMemberError = err?.error?.message ?? 'No se pudo añadir al usuario.';
       },
     });
   }

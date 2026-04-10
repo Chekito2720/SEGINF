@@ -2,8 +2,7 @@
 
     <header class="usr-header">
         <h1 class="usr-title">Usuarios</h1>
-        <span class="usr-group">{{ group?.nombre }}</span>
-        <span class="usr-count">{{ members.length }} miembros</span>
+        <span class="usr-count">{{ members.length }} usuarios</span>
     </header>
 
     <div class="usr-grid">
@@ -21,6 +20,21 @@
                 <span class="usr-badge" [style.background]="profileColor(u) + '20'" [style.color]="profileColor(u)">
                     {{ profileLabel(u) }}
                 </span>
+            </div>
+
+            <div class="usr-groups-row">
+                @if (userGroups(u).length) {
+                    @for (g of userGroups(u); track g.id) {
+                        <span class="usr-group-tag"
+                              [style.background]="g.color + '22'"
+                              [style.color]="g.color"
+                              [style.border-color]="g.color + '44'">
+                            {{ g.nombre }}
+                        </span>
+                    }
+                } @else {
+                    <span class="usr-no-groups">Sin grupos asignados</span>
+                }
             </div>
 
             <div class="usr-stats">

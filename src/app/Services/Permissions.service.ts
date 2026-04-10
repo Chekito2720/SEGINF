@@ -39,10 +39,10 @@ export class PermissionsService {
   // ── Refrescar permisos según grupo seleccionado ───────────────────
   // Combina los permisos globales del JWT con los contextuales del grupo
   refreshPermissionsForGroup(groupId: string, userId: string): void {
-    this.http.get<ApiResponse<{ permisosGrupo: Permission[] }>>(`${GW}/grupos/${groupId}/miembros/${userId}/permisos`)
+    this.http.get<ApiResponse<{ permisosGrupo: Permission[] }[]>>(`${GW}/grupos/${groupId}/miembros/${userId}/permisos`)
       .subscribe({
         next:  r => {
-          this._contextualPermissions.set(r.data?.permisosGrupo ?? []);
+          this._contextualPermissions.set((r.data as any)?.[0]?.permisosGrupo ?? []);
           this._merge();
         },
         error: () => { /* mantener permisos actuales si falla */ },

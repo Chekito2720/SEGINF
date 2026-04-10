@@ -45,16 +45,22 @@ export class GroupService {
     );
   }
 
+  loadAllGroups(): Observable<AppGroup[]> {
+    return this.http.get<{ data: unknown[] }>(`${GW}/grupos?limit=100`).pipe(
+      map(r => (r.data ?? []).map(mapGroup)),
+    );
+  }
+
   createGroup(dto: CreateGroupDto): Observable<AppGroup> {
-    return this.http.post<ApiResponse<unknown>>(`${GW}/grupos`, dto).pipe(
-      map(r => mapGroup(r.data)),
+    return this.http.post<ApiResponse<unknown[]>>(`${GW}/grupos`, dto).pipe(
+      map(r => mapGroup((r.data as unknown[])[0])),
       tap(g => this._groups.update(list => [...list, g])),
     );
   }
 
   updateGroup(id: string, dto: UpdateGroupDto): Observable<AppGroup> {
-    return this.http.patch<ApiResponse<unknown>>(`${GW}/grupos/${id}`, dto).pipe(
-      map(r => mapGroup(r.data)),
+    return this.http.patch<ApiResponse<unknown[]>>(`${GW}/grupos/${id}`, dto).pipe(
+      map(r => mapGroup((r.data as unknown[])[0])),
       tap(updated => this._groups.update(list =>
         list.map(g => g.id === id ? updated : g)
       )),
@@ -91,9 +97,9 @@ export class GroupService {
 
   // ── Permisos de usuario en grupo ──────────────────────────────────
   getUserGroupPermissions(groupId: string, userId: string): Observable<Permission[]> {
-    return this.http.get<ApiResponse<Permission[]>>(
+    return this.http.get<ApiResponse<unknown[]>>(
       `${GW}/grupos/${groupId}/miembros/${userId}/permisos`
-    ).pipe(map(r => r.data));
+    ).pipe(map(r => ((r.data as any)[0]?.permisosGrupo ?? []) as Permission[]));
   }
 
   updateUserGroupPermissions(groupId: string, userId: string, permissions: Permission[]): Observable<void> {

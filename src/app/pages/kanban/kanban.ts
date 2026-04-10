@@ -156,7 +156,7 @@ export class KanbanComponent implements OnInit {
 
   // ── Drag & Drop ────────────────────────────────────────────────────
   onDragStart(event: DragEvent, ticket: Ticket) {
-    if (!this.permsSvc.hasPermission('ticket_edit')) { event.preventDefault(); return; }
+    if (!this.permsSvc.hasPermission('ticket_state')) { event.preventDefault(); return; }
     this.draggingId.set(ticket.id);
     event.dataTransfer!.effectAllowed = 'move';
     event.dataTransfer!.setData('text/plain', ticket.id);
@@ -170,14 +170,18 @@ export class KanbanComponent implements OnInit {
   onDragOver(event: DragEvent, col: KanbanColumn) {
     event.preventDefault();
     event.dataTransfer!.dropEffect = 'move';
-    col.isDragOver = true;
+    if (!col.isDragOver) { col.isDragOver = true; this.cdr.detectChanges(); }
   }
 
-  onDragLeave(col: KanbanColumn) { col.isDragOver = false; }
+  onDragLeave(col: KanbanColumn) {
+    col.isDragOver = false;
+    this.cdr.detectChanges();
+  }
 
   onDrop(event: DragEvent, targetStatus: TicketStatus, col: KanbanColumn) {
     event.preventDefault();
     col.isDragOver = false;
+    this.cdr.detectChanges();
     const id = this.draggingId();
     if (!id) return;
 
@@ -187,7 +191,13 @@ export class KanbanComponent implements OnInit {
         this.draggingId.set(null);
         this.msgSvc.add({ severity:'success', summary:'Movido', detail:`Ticket → ${this.col(targetStatus).label}`, life:2000 });
       },
-      error: () => this.draggingId.set(null),
+      error: (err) => {
+        this.draggingId.set(null);
+        const msg = err?.status === 403
+          ? 'Solo la persona asignada puede cambiar el estado de este ticket.'
+          : (err?.error?.message ?? 'No se pudo cambiar el estado.');
+        this.msgSvc.add({ severity: 'warn', summary: 'Sin permiso', detail: msg, life: 4000 });
+      },
     });
   }
 

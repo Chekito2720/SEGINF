@@ -106,7 +106,7 @@ export class ProfileComponent implements OnInit {
 
   // ── Edición ───────────────────────────────────────────────────────
   get canEdit(): boolean {
-    return this.isSelf() || this.permsSvc.hasPermission('user_edit');
+    return this.permsSvc.hasPermission('user_edit');
   }
 
   startEdit() {

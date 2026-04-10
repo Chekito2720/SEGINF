@@ -112,6 +112,32 @@
     flex-shrink: 0;
 }
 
+/* Groups row */
+.usr-groups-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .35rem;
+    min-height: 1.5rem;
+}
+
+.usr-group-tag {
+    font-size: .68rem;
+    font-weight: 600;
+    padding: .18rem .55rem;
+    border-radius: 100px;
+    border: 1px solid transparent;
+    white-space: nowrap;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.usr-no-groups {
+    font-size: .7rem;
+    color: #3a3d5a;
+    font-style: italic;
+}
+
 /* Stats */
 .usr-stats {
     display: grid;

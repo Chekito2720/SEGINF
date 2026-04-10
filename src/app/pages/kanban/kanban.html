@@ -51,7 +51,7 @@
 
                 <div class="kb-card" [class.is-dragging]="draggingId() === ticket.id"
                     [class.overdue]="isOverdue(ticket.dueDate) && ticket.status !== 'hecho'"
-                    [attr.draggable]="permsSvc.hasPermission('ticket_edit')" (dragstart)="onDragStart($event, ticket)"
+                    [attr.draggable]="permsSvc.hasPermission('ticket_state')" (dragstart)="onDragStart($event, ticket)"
                     (dragend)="onDragEnd()" (click)="openDetail(ticket)">
 
                     <!-- Card top row -->
@@ -97,7 +97,7 @@
                     </div>
 
                     <!-- Drag handle -->
-                    @if (permsSvc.hasPermission('ticket_edit')) {
+                    @if (permsSvc.hasPermission('ticket_state')) {
                     <div class="kb-drag-handle" pTooltip="Arrastrar" tooltipPosition="top">
                         <i class="pi pi-equals"></i>
                     </div>

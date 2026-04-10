@@ -140,8 +140,8 @@ export class TicketService {
   }
 
   addComment(ticketId: string, text: string): Observable<TicketComment> {
-    return this.http.post<ApiResponse<unknown>>(`${GW}/tickets/${ticketId}/comentarios`, { contenido: text }).pipe(
-      map(r => mapComment(r.data)),
+    return this.http.post<ApiResponse<unknown[]>>(`${GW}/tickets/${ticketId}/comentarios`, { contenido: text }).pipe(
+      map(r => mapComment((r.data as unknown[])[0])),
       tap(c => this._comments.update(list => [...list, c])),
     );
   }

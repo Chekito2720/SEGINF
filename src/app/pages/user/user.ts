@@ -1,12 +1,13 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router }       from '@angular/router';
 import { TooltipModule } from 'primeng/tooltip';
 import { AuthService }        from '../../Services/Auth.service';
 import { TicketService }      from '../../Services/Ticket.service';
+import { UserService }        from '../../Services/User.service';
 import { GroupService }       from '../../Services/Group.service';
 import { PermissionsService } from '../../Services/Permissions.service';
-import { GroupMember, TicketStatus, Permission, PERMISSION_SETS } from '../../models/Auth.model';
+import { AppUser, AppGroup, TicketStatus, Permission, PERMISSION_SETS } from '../../models/Auth.model';
 
 @Component({
   selector: 'app-user',
@@ -17,28 +18,38 @@ import { GroupMember, TicketStatus, Permission, PERMISSION_SETS } from '../../mo
 })
 export class UserComponent implements OnInit {
 
+  allGroups = signal<AppGroup[]>([]);
+
   constructor(
     public  authSvc:   AuthService,
     public  permsSvc:  PermissionsService,
     private ticketSvc: TicketService,
+    private userSvc:   UserService,
     private groupSvc:  GroupService,
     private router:    Router,
   ) {}
 
   ngOnInit() {
-    const g = this.authSvc.getGroup();
-    if (!g) return;
-    this.groupSvc.loadGroupMembers(g.id).subscribe();
-    this.ticketSvc.loadForGroup(g.id).subscribe();
+    this.userSvc.loadUsers().subscribe();
+    this.groupSvc.loadAllGroups().subscribe({
+      next: groups => {
+        this.allGroups.set(groups);
+        groups.forEach(g => this.ticketSvc.loadForGroup(g.id).subscribe());
+      },
+    });
   }
 
-  get group()   { return this.authSvc.getGroup(); }
-  get members() { return this.groupSvc.getGroupMembers(); }
+  get members(): AppUser[] { return this.userSvc.getUsers(); }
+
+  userGroups(u: AppUser): AppGroup[] {
+    if (!u.groupIds?.length) return [];
+    return u.groupIds
+      .map(id => this.allGroups().find(g => g.id === id))
+      .filter((g): g is AppGroup => !!g);
+  }
 
   ticketCounts(userId: string): Record<TicketStatus | 'total', number> {
-    const g = this.authSvc.getGroup();
-    if (!g) return { total:0, pendiente:0, en_progreso:0, hecho:0, bloqueado:0 };
-    const tickets = this.ticketSvc.getByGroupAndUser(g.id, userId);
+    const tickets = this.ticketSvc.getTickets().filter(t => t.assignedToId === userId);
     return {
       total:       tickets.length,
       pendiente:   tickets.filter(t => t.status === 'pendiente').length,
@@ -48,15 +59,15 @@ export class UserComponent implements OnInit {
     };
   }
 
-  profileLabel(u: GroupMember): string {
-    const perms = u.permissions ?? u.effectivePermissions ?? [];
+  profileLabel(u: AppUser): string {
+    const perms = u.permissions ?? [];
     if (PERMISSION_SETS['superadmin'].every((p: Permission) => perms.includes(p))) return 'Superadmin';
     if (perms.length >= 10) return 'Admin';
     return 'Miembro';
   }
 
-  profileColor(u: GroupMember): string {
-    const perms = u.permissions ?? u.effectivePermissions ?? [];
+  profileColor(u: AppUser): string {
+    const perms = u.permissions ?? [];
     if (PERMISSION_SETS['superadmin'].every((p: Permission) => perms.includes(p))) return '#7c6af7';
     if (perms.length >= 10) return '#38bdf8';
     return '#4ade80';
