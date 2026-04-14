@@ -1,4 +1,4 @@
-import { Component, computed, signal, OnInit } from '@angular/core';
+import { Component, computed, signal, OnInit, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -100,25 +100,35 @@ export class HomeComponent implements OnInit {
     private groupSvc:  GroupService,
     private msgSvc:    MessageService,
     private router:    Router,
-  ) {}
+  ) {
+    // ── Reacciona automáticamente cuando cambia el grupo ────────────
+    // Esto cubre tanto la carga inicial (restore() async) como el
+    // cambio de grupo en caliente, sin race conditions.
+    effect(() => {
+      const g = this.authSvc.currentGroup(); // signal rastreado
+      this.group.set(g);
+      if (g) {
+        this.groupSvc.loadGroupMembers(g.id).subscribe();
+        this.loadTickets();
+      } else {
+        this.tickets.set([]);
+      }
+    });
+  }
+
+  // ngOnInit queda vacío: el effect() del constructor lo maneja todo
+  ngOnInit() {}
 
   userGroups = computed(() => this.authSvc.getUserGroups());
 
   get canSwitchGroup(): boolean { return this.userGroups().length > 1; }
 
-  ngOnInit() {
-    const g = this.authSvc.getGroup();
-    this.group.set(g);
-    if (g) this.groupSvc.loadGroupMembers(g.id).subscribe();
-    this.loadTickets();
-  }
-
+  // switchGroup ya no necesita setar el grupo ni llamar loadTickets
+  // directamente: al hacer selectGroup(), _currentGroup cambia y el
+  // effect() se dispara automáticamente.
   switchGroup(g: AppGroup) {
     if (g.id === this.group()?.id) return;
     this.authSvc.selectGroup(g.id);
-    this.group.set(g);
-    this.groupSvc.loadGroupMembers(g.id).subscribe();
-    this.loadTickets();
     this.msgSvc.add({ severity: 'info', summary: 'Grupo cambiado', detail: `Ahora trabajas en ${g.nombre}` });
   }
 

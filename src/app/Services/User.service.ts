@@ -41,12 +41,17 @@ export class UserService {
   }
 
   // ── HTTP ──────────────────────────────────────────────────────────
-  loadUsers(): Observable<AppUser[]> {
-    return this.http.get<ApiResponse<{ data: Record<string, unknown>[] }>>(`${GW}/usuarios`).pipe(
-      map(r => ((r.data as any)?.data ?? r.data ?? []).map(mapUser)),
-      tap(users => this._users.set(users)),
-    );
-  }
+loadUsers(): Observable<AppUser[]> {
+  return this.http.get<any>(`${GW}/usuarios`).pipe(
+    map(r => {
+      // La respuesta real es: { statusCode, data: { data: [...], total, ... } }
+      const inner = r?.data?.data ?? r?.data ?? [];
+      const arr = Array.isArray(inner) ? inner : [];
+      return arr.map(mapUser);
+    }),
+    tap(users => this._users.set(users)),
+  );
+}
 
   getMe(): Observable<AppUser> {
     return this.http.get<ApiResponse<Record<string, unknown>[]>>(`${GW}/usuarios/me`).pipe(

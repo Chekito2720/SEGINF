@@ -38,12 +38,15 @@ export class GroupService {
   getGroupMembers(): GroupMember[]   { return this._groupMembers(); }
 
   // ── Grupos ────────────────────────────────────────────────────────
-  loadUserGroups(): Observable<AppGroup[]> {
-    return this.http.get<ApiResponse<unknown[]>>(`${GW}/grupos/mis-grupos`).pipe(
-      map(r => r.data.map(mapGroup)),
-      tap(groups => this._groups.set(groups)),
-    );
-  }
+loadUserGroups(): Observable<AppGroup[]> {
+  return this.http.get<any>(`${GW}/grupos/mis-grupos`).pipe(
+    map(r => {
+      const arr = Array.isArray(r.data) ? r.data : (r.data?.data ?? []);
+      return arr.map(mapGroup);
+    }),
+    tap(groups => this._groups.set(groups)),
+  );
+}
 
   loadAllGroups(): Observable<AppGroup[]> {
     return this.http.get<{ data: unknown[] }>(`${GW}/grupos?limit=100`).pipe(

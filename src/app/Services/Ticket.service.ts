@@ -76,12 +76,20 @@ export class TicketService {
   }
 
   // ── Tickets HTTP ──────────────────────────────────────────────────
-  loadForGroup(groupId: string): Observable<Ticket[]> {
-    return this.http.get<ApiResponse<unknown[]>>(`${GW}/tickets?grupoId=${groupId}`).pipe(
-      map(r => r.data.map(mapTicket)),
-      tap(tickets => this._tickets.set(tickets)),
-    );
-  }
+loadForGroup(groupId: string): Observable<Ticket[]> {
+  return this.http.get<any>(`${GW}/tickets?grupoId=${groupId}`).pipe(
+    map(r => {
+      const arr = Array.isArray(r.data) ? r.data : (r.data?.data ?? []);
+      return arr.map(mapTicket);
+    }),
+    tap(tickets => {
+      this._tickets.update(current => [
+        ...current.filter(t => t.groupId !== groupId),
+        ...tickets,
+      ]);
+    }),
+  );
+}
 
   fetchById(id: string): Observable<Ticket> {
     return this.http.get<ApiResponse<unknown[]>>(`${GW}/tickets/${id}`).pipe(
@@ -129,15 +137,18 @@ export class TicketService {
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   }
 
-  loadComments(ticketId: string): Observable<TicketComment[]> {
-    return this.http.get<ApiResponse<unknown[]>>(`${GW}/tickets/${ticketId}/comentarios`).pipe(
-      map(r => r.data.map(mapComment)),
-      tap(comments => {
-        const others = this._comments().filter(c => c.ticketId !== ticketId);
-        this._comments.set([...others, ...comments]);
-      }),
-    );
-  }
+ loadComments(ticketId: string): Observable<TicketComment[]> {
+  return this.http.get<any>(`${GW}/tickets/${ticketId}/comentarios`).pipe(
+    map(r => {
+      const arr = Array.isArray(r.data) ? r.data : (r.data?.data ?? []);
+      return arr.map(mapComment);
+    }),
+    tap(comments => {
+      const others = this._comments().filter(c => c.ticketId !== ticketId);
+      this._comments.set([...others, ...comments]);
+    }),
+  );
+}
 
   addComment(ticketId: string, text: string): Observable<TicketComment> {
     return this.http.post<ApiResponse<unknown[]>>(`${GW}/tickets/${ticketId}/comentarios`, { contenido: text }).pipe(
@@ -153,14 +164,17 @@ export class TicketService {
   }
 
   loadHistory(ticketId: string): Observable<TicketHistory[]> {
-    return this.http.get<ApiResponse<unknown[]>>(`${GW}/tickets/${ticketId}/historial`).pipe(
-      map(r => r.data.map(mapHistory)),
-      tap(history => {
-        const others = this._history().filter(h => h.ticketId !== ticketId);
-        this._history.set([...others, ...history]);
-      }),
-    );
-  }
+  return this.http.get<any>(`${GW}/tickets/${ticketId}/historial`).pipe(
+    map(r => {
+      const arr = Array.isArray(r.data) ? r.data : (r.data?.data ?? []);
+      return arr.map(mapHistory);
+    }),
+    tap(history => {
+      const others = this._history().filter(h => h.ticketId !== ticketId);
+      this._history.set([...others, ...history]);
+    }),
+  );
+}
 }
 
 // ── Mappers (respuesta backend → modelo frontend) ─────────────────

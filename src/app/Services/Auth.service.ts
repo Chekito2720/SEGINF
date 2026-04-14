@@ -19,7 +19,7 @@ import { GroupService } from './Group.service';
 import { mapUser } from './User.service';
 import { environment } from '../../environments/environment';
 
-const GW          = environment.apiGatewayUrl;
+const GW           = environment.apiGatewayUrl;
 const TOKEN_COOKIE = 'miapp_token';
 const GROUP_COOKIE = 'miapp_group';
 
@@ -29,6 +29,10 @@ export class AuthService {
   private _currentUser  = signal<AppUser  | null>(null);
   private _currentGroup = signal<AppGroup | null>(null);
   private _userGroups   = signal<AppGroup[]>([]);
+
+  // ── Signal público readonly para que los componentes puedan
+  //    rastrear cambios de grupo reactivamente con effect()
+  readonly currentGroup = this._currentGroup.asReadonly();
 
   constructor(
     private http:      HttpClient,
@@ -106,12 +110,15 @@ export class AuthService {
   // ── RESTAURAR SESIÓN ──────────────────────────────────────────────
   restore(): void {
     const token = this._getToken();
+    console.log('restore | token:', token ? 'existe' : 'NULL');
     if (!token || this.jwtSvc.isExpired(token)) {
+      console.log('restore | SALIDA: token nulo o expirado. isExpired:', token ? this.jwtSvc.isExpired(token) : 'N/A');
       this._clearSession();
       return;
     }
 
     const payload = this.jwtSvc.decode(token);
+      console.log('restore | payload:', payload);
     if (!payload) { this._clearSession(); return; }
 
     // Rehidratar usuario y permisos desde el token
@@ -127,18 +134,21 @@ export class AuthService {
     // Restaurar grupos del usuario
     this.groupSvc.loadUserGroups().subscribe({
       next: groups => {
+        console.log('restore | grupos cargados:', groups);
         this._userGroups.set(groups);
         const savedGroupId = this._getCookie(GROUP_COOKIE);
         if (savedGroupId) {
           const group = groups.find(g => g.id === savedGroupId) ?? null;
           if (group) {
+            // Al hacer set aquí, el effect() en HomeComponent se dispara
+            // automáticamente y carga los tickets sin race condition
             this._currentGroup.set(group);
             this.permsSvc.refreshPermissionsForGroup(group.id, user.id);
             this.groupSvc.loadGroupMembers(group.id).subscribe();
           }
         }
       },
-      error: () => {},
+      error: (e) => console.error('restore | error cargando grupos:', e),
     });
   }
 
